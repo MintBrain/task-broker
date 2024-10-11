@@ -1,0 +1,6 @@
+A:\W\task-broker\MonitoringService\obj\Debug\net8.0\MonitoringService.csproj.AssemblyReference.cache
+A:\W\task-broker\MonitoringService\obj\Debug\net8.0\MonitoringService.GeneratedMSBuildEditorConfig.editorconfig
+A:\W\task-broker\MonitoringService\obj\Debug\net8.0\MonitoringService.AssemblyInfoInputs.cache
+A:\W\task-broker\MonitoringService\obj\Debug\net8.0\MonitoringService.AssemblyInfo.cs
+A:\W\task-broker\MonitoringService\obj\Debug\net8.0\MonitoringService.csproj.CoreCompileInputs.cache
+A:\W\task-broker\MonitoringService\obj\Debug\net8.0\MonitoringService.sourcelink.json
