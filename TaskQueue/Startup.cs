@@ -1,42 +1,44 @@
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.EntityFrameworkCore;
-using Shared.Models;
 
 namespace TaskQueue
 {
     public class Startup
     {
+        
+        public IConfiguration Configuration { get; }
+
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
         }
-
-        public IConfiguration Configuration { get; }
-
         public void ConfigureServices(IServiceCollection services)
         {
-            // Настройка подключения к PostgreSQL
-            services.AddDbContext<TaskQueueContext>(options =>
-                options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection")));
+            // Использование строки подключения к базе данных
+            var connectionString = Configuration.GetConnectionString("DefaultConnection");
 
-            services.AddControllers(); // Добавление поддержки контроллеров
+            // Использование настроек RabbitMQ
+            var rabbitMqHost = Configuration["RabbitMQ:Host"];
+            var rabbitMqQueueName = Configuration["RabbitMQ:QueueName"];
+            
+            // Использование пользовательских настроек
+            var defaultTTL = Configuration.GetValue<int>("TaskSettings:DefaultTTL");
+            
+            // Добавление необходимых сервисов для работы с контроллерами и зависимостями
+            services.AddControllers();
+            // Настройка подключения к базе данных, кэшу и т.д. будет добавлена здесь
         }
 
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public void Configure(IApplicationBuilder app)
         {
-            if (env.IsDevelopment())
-            {
-                app.UseDeveloperExceptionPage();
-            }
-
+            // Настройка маршрутизации и обработки запросов
             app.UseRouting();
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapControllers(); // Настройка маршрутов для контроллеров
+                // Подключение маршрутов контроллеров
+                endpoints.MapControllers();
             });
         }
     }

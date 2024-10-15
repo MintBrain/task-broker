@@ -1,73 +1,77 @@
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.OpenApi.Models;
-using Ocelot.DependencyInjection;
-using Ocelot.Middleware;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using ApiGateway.Services;
+using Prometheus;
 
-namespace ApiGateway
+public class Startup
 {
-    public class Startup
+    public IConfiguration Configuration { get; }
+    
+    public Startup(IConfiguration configuration)
     {
-        public Startup(IConfiguration configuration)
-        {
-            Configuration = configuration;
-        }
+        Configuration = configuration;
+    }
 
-        public IConfiguration Configuration { get; }
-
-        public void ConfigureServices(IServiceCollection services)
-        {
-            // Настройка авторизации
-            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                .AddJwtBearer(options =>
+    public void ConfigureServices(IServiceCollection services)
+    {
+        // Поддержка контроллеров
+        services.AddControllers();
+        
+        // Регистрация AuthService для работы с JWT токенами
+        services.AddScoped<IAuthService, AuthService>();
+        
+        // Настройка аутентификации с использованием JWT
+        var key = Encoding.ASCII.GetBytes(Configuration["Jwt:Key"]);
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
-                    {
-                        ValidateIssuer = true,
-                        ValidateAudience = true,
-                        ValidateLifetime = true,
-                        ValidateIssuerSigningKey = true,
-                        // Укажите ваши параметры валидации
-                    };
-                });
-
-            services.AddAuthorization();
-
-            // Добавление Ocelot
-            services.AddOcelot();
-            
-            services.AddHttpClient();
-
-            // Добавление Swagger
-            services.AddSwaggerGen(c =>
-            {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "API Gateway", Version = "v1" });
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = Configuration["Jwt:Issuer"],
+                    ValidAudience = Configuration["Jwt:Audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(key)
+                };
             });
-        }
 
-        public async void Configure(IApplicationBuilder app)
+        // Добавление метрик
+        services.AddMetrics(); // Предполагается существование собственной настройки метрик
+
+        // HTTP клиент для маршрутизации запросов к TaskQueue
+        services.AddHttpClient("TaskQueueClient", client =>
         {
-            if (app.ApplicationServices.GetRequiredService<IHostEnvironment>().IsDevelopment())
-            {
-                app.UseDeveloperExceptionPage();
-            }
+            client.BaseAddress = new Uri(Configuration["TaskQueue:BaseUrl"]);
+        });
+    }
 
-            // Использование Swagger
-            app.UseSwagger();
-            app.UseSwaggerUI(c =>
-            {
-                c.SwaggerEndpoint("/swagger/v1/swagger.json", "API Gateway V1");
-                c.RoutePrefix = string.Empty; // Делаем Swagger UI доступным по корневому адресу
-            });
-
-            // Использование авторизации
-            app.UseAuthentication();
-            app.UseAuthorization();
-
-            // Middleware для Ocelot
-            await app.UseOcelot();
+    public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+    {
+        if (env.IsDevelopment())
+        {
+            app.UseDeveloperExceptionPage();
         }
+
+        // Принудительное использование HTTPS
+        app.UseHttpsRedirection();
+
+        // Настройка аутентификации
+        app.UseAuthentication();
+
+        // Настройка авторизации
+        app.UseAuthorization();
+
+        app.UseRouting();
+        
+        // Добавление метрик
+        app.UseMetricServer(); // Включает сервер метрик по умолчанию
+        
+        app.UseEndpoints(endpoints =>
+        {
+            endpoints.MapControllers();
+        });
     }
 }
