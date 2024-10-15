@@ -1,35 +1,61 @@
 version: '3.8'
 
 services:
-  api-gateway:
-    build: ./ApiGateway
+  apigateway:
+    image: yourusername/apigateway:latest # Замените на ваш образ
+    build:
+      context: ./ApiGateway
+      dockerfile: Dockerfile
     ports:
-      - "5000:80"
-    depends_on:
-      - task-queue
-
-  task-queue:
-    build: ./TaskQueue
-    ports:
-      - "5001:80"
-    depends_on:
-      - task-executor
-
-  task-executor:
-    build: ./TaskExecutor
-    ports:
-      - "5002:80"
-
-  database:
-    image: postgres
+      - "5000:80" # Проброс порта для ApiGateway
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: tasksdb
-    ports:
-      - "5432:5432"
+      - ASPNETCORE_ENVIRONMENT=Development
+      - TaskQueue__BaseUrl=http://taskqueue:80 # URL для TaskQueue
+    depends_on:
+      - taskqueue
 
-  monitoring:
-    build: ./MonitoringService
+  taskqueue:
+    image: yourusername/taskqueue:latest # Замените на ваш образ
+    build:
+      context: ./TaskQueue
+      dockerfile: Dockerfile
     ports:
-      - "9090:9090"  # Пример для Prometheus
+      - "5001:80" # Проброс порта для TaskQueue
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=db;Database=taskqueue;Username=postgres;Password=yourpassword # Параметры подключения к PostgreSQL
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__QueueName=taskqueue # Название очереди
+
+  taskexecutor:
+    image: yourusername/taskexecutor:latest # Замените на ваш образ
+    build:
+      context: ./TaskExecutor
+      dockerfile: Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__QueueName=taskqueue # Название очереди
+
+  rabbitmq:
+    image: rabbitmq:management
+    ports:
+      - "15672:15672" # Web UI RabbitMQ
+      - "5672:5672" # AMQP
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: password
+
+  db:
+    image: postgres:latest
+    ports:
+      - "5432:5432" # Проброс порта для PostgreSQL
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: yourpassword
+      POSTGRES_DB: taskqueue
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
