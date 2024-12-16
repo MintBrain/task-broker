@@ -8,6 +8,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Net.Http;
 using TaskExecutor.Models;
+using System.Diagnostics.Metrics;
+using Microsoft.Extensions.Logging;
+using Prometheus;
 
 namespace TaskExecutor
 {
@@ -17,11 +20,15 @@ namespace TaskExecutor
         private readonly IConnection _connection;
         private readonly IModel _channel;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly ILogger<TaskProcessor> _logger;
+        private static readonly Counter TaskProcessedSuccessfully = Metrics.CreateCounter("task_processed_successfully", "Number of tasks processed successfully");
+        private static readonly Counter TaskProcessingFailed = Metrics.CreateCounter("task_processing_failed", "Number of tasks that failed to process");
 
-        public TaskProcessor(IHttpClientFactory httpClientFactory, IConfiguration configuration)
+        public TaskProcessor(IHttpClientFactory httpClientFactory, IConfiguration configuration, ILogger<TaskProcessor> logger)
         {
             _configuration = configuration;
             _httpClientFactory = httpClientFactory;
+            _logger = logger;
 
             // Настройки RabbitMQ из конфигурации
             var factory = new ConnectionFactory()
@@ -74,6 +81,8 @@ namespace TaskExecutor
         {
             // Здесь идет выполнение задачи
             await Task.Delay(1000); // Задержка для имитации
+            // Инкрементируем счетчик успешных задач
+            TaskProcessedSuccessfully.Inc();
             return "Success";
         }
 
@@ -95,7 +104,7 @@ namespace TaskExecutor
             var response = await httpClient.PostAsync(url, content);
             if (!response.IsSuccessStatusCode)
             {
-                // Логирование ошибки отправки
+                _logger.LogError("Ошибка отправки результата задачи {TaskId} в TaskQueue. Статус: {Status}", taskId, response.StatusCode);
             }
         }
 

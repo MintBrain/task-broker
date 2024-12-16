@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration; // Добавлено
 using Microsoft.AspNetCore.Hosting;
 using TaskExecutor.Services;
 using Shared.Services; // Убедитесь, что путь соответствует вашему проекту
+using Prometheus;
 
 namespace TaskExecutor
 {
@@ -27,6 +28,8 @@ namespace TaskExecutor
 
             // Добавление контроллера
             services.AddControllers();
+
+            services.AddPrometheusCounters();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -41,6 +44,7 @@ namespace TaskExecutor
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
+                endpoints.MapMetrics();
             });
         }
     }

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Prometheus;
 
 namespace TaskQueue
 {
@@ -28,6 +29,11 @@ namespace TaskQueue
             // Добавление необходимых сервисов для работы с контроллерами и зависимостями
             services.AddControllers();
             // Настройка подключения к базе данных, кэшу и т.д. будет добавлена здесь
+
+            // Добавление метрик Prometheus
+            services.AddHttpMetrics(); // Сбор HTTP метрик
+
+            services.AddMetrics(); // Добавление поддержки метрик
         }
 
         public void Configure(IApplicationBuilder app)
@@ -35,10 +41,14 @@ namespace TaskQueue
             // Настройка маршрутизации и обработки запросов
             app.UseRouting();
 
+            app.UseHttpMetrics();
+            app.UseMetricServer();
+
             app.UseEndpoints(endpoints =>
             {
                 // Подключение маршрутов контроллеров
                 endpoints.MapControllers();
+                endpoints.MapMetrics();
             });
         }
     }
