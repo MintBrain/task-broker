@@ -4,10 +4,10 @@ EXPOSE 80
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-COPY ["TaskQueue/TaskQueue.csproj", "TaskQueue/"]
-RUN dotnet restore "TaskQueue/TaskQueue.csproj"
-COPY . .
-WORKDIR "/src/TaskQueue"
+COPY TaskQueue.csproj ./
+RUN dotnet restore "TaskQueue.csproj"
+COPY . ./
+WORKDIR "/src"
 RUN dotnet build "TaskQueue.csproj" -c Release -o /app/build
 
 FROM build AS publish

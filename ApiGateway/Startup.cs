@@ -20,7 +20,10 @@ public class Startup
         
         // Регистрация AuthService для работы с JWT токенами
         services.AddScoped<IAuthService, AuthService>();
-        
+
+        // Добавление метрик Prometheus
+        services.AddHttpMetrics(); // Сбор HTTP метрик, таких как время ответа и количество запросов
+
         // Настройка аутентификации с использованием JWT
         var key = Encoding.ASCII.GetBytes(Configuration["Jwt:Key"]);
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -65,13 +68,15 @@ public class Startup
         app.UseAuthorization();
 
         app.UseRouting();
-        
-        // Добавление метрик
-        app.UseMetricServer(); // Включает сервер метрик по умолчанию
-        
+
+        // Добавление метрик Prometheus
+        app.UseHttpMetrics(); // Автоматический сбор HTTP метрик
+        app.UseMetricServer(); // Открывает эндпоинт `/metrics` для Prometheus
+
         app.UseEndpoints(endpoints =>
         {
             endpoints.MapControllers();
+            endpoints.MapMetrics(); // Добавление метрик к маршрутам
         });
     }
 }
