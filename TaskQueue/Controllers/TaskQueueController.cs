@@ -5,11 +5,18 @@ using TaskQueue.Models;
 namespace TaskQueue.Controllers
 {
     [ApiController]
-    [Route("queue")]
+    [Route("/")]
     public class TaskQueueController : ControllerBase
     {
+        // GET /
+        [HttpGet]
+        public IActionResult Get()
+        {
+            return Ok("Welcome to TaskQueue API!");
+        }
+        
         // POST /queue
-        [HttpPost]
+        [HttpPost("add")]
         public IActionResult AddTask([FromBody] TaskItem task)
         {
             // Пример функции для добавления задачи в очередь
@@ -35,7 +42,7 @@ namespace TaskQueue.Controllers
             }
 
             // Обновление задачи в БД по Id
-            await _taskService.UpdateTaskResult(result.Id, result.Status, result.Result);
+            // await _taskService.UpdateTaskResult(result.Id, result.Status, result.Result);
 
             return Ok();
         }

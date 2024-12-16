@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Prometheus;
+using Microsoft.OpenApi.Models;
+// using Prometheus;
 
 namespace TaskQueue
 {
@@ -31,7 +32,11 @@ namespace TaskQueue
             // Настройка подключения к базе данных, кэшу и т.д. будет добавлена здесь
 
             // Добавление метрик Prometheus
-            services.AddHttpMetrics(); // Сбор HTTP метрик
+            // services.AddHttpMetrics(); // Сбор HTTP метрик
+            services.AddSwaggerGen(option =>
+            {
+                option.SwaggerDoc("v1", new OpenApiInfo { Title = "TaskQueue API", Version = "v1" });
+            });
 
             services.AddMetrics(); // Добавление поддержки метрик
         }
@@ -41,15 +46,18 @@ namespace TaskQueue
             // Настройка маршрутизации и обработки запросов
             app.UseRouting();
 
-            app.UseHttpMetrics();
-            app.UseMetricServer();
+            // app.UseHttpMetrics();
+            // app.UseMetricServer();
 
             app.UseEndpoints(endpoints =>
             {
                 // Подключение маршрутов контроллеров
                 endpoints.MapControllers();
-                endpoints.MapMetrics();
+                // endpoints.MapMetrics();
+                
             });
+            app.UseSwagger();
+            app.UseSwaggerUI();
         }
     }
 }
