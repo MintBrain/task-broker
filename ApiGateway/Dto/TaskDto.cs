@@ -1,11 +1,11 @@
 namespace ApiGateway.Dto
 {
-    public class TaskDto
+    public sealed class TaskDto
     {
-        public string Id { get; set; }
-        public string Type { get; set; }
-        public string Data { get; set; }
-        public int TTL { get; set; }
+        public required string Id { get; set; }
+        public required string Type { get; set; }
+        public required string Data { get; set; }
+        public required int TTL { get; set; }
     }
 
 }

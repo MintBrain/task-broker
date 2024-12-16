@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 using System.Net.Http;
 using System.Threading.Tasks;
 using ApiGateway.Dto;
+using Microsoft.AspNetCore.Authorization;
 
+[Authorize]
 [ApiController]
 [Route("tasks")]
 public class TasksController : ControllerBase
