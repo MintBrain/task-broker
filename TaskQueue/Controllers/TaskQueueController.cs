@@ -30,6 +30,9 @@ namespace TaskQueue.Controllers
         
         // POST /queue
         [HttpPost("")]
+        [SwaggerOperation(
+            Summary = "Добавить задачу в очередь", 
+            Description = "Валидирует, добавляет задачу в БД и брокер сообщений")]
         public async Task<IActionResult> AddTask([FromBody] TaskItem task)
         {
             await _taskQueueService.AddTask(task);
@@ -40,6 +43,7 @@ namespace TaskQueue.Controllers
 
         // POST /queue/restart/{id}
         [HttpPost("restart/{id}")]
+        [SwaggerOperation(Summary = "Перезапустить задачу")]
         public IActionResult RestartTask(string id)
         {
             // Пример функции для перезапуска задачи по ID
@@ -48,7 +52,8 @@ namespace TaskQueue.Controllers
         }
         
         [HttpPost("result")]
-        public async Task<IActionResult> ReceiveTaskResult([FromBody] TaskResult result)
+        [SwaggerOperation(Summary = "Получить результат выполнения задачи")]
+        public async Task<IActionResult> ReceiveTaskResult([FromBody] TaskResult? result)
         {
             if (result == null || string.IsNullOrEmpty(result.Id))
             {
@@ -63,6 +68,7 @@ namespace TaskQueue.Controllers
 
         // GET /queue/tasks
         [HttpGet("tasks")]
+        [SwaggerOperation(Summary = "Получить список всех задач")]
         public IActionResult GetAllTasks()
         {
             // Пример функции для получения всех задач
@@ -72,6 +78,7 @@ namespace TaskQueue.Controllers
 
         // GET /queue/tasks/{id}
         [HttpGet("tasks/{id}")]
+        [SwaggerOperation(Summary = "Получить подробное описание задачи")]
         public IActionResult GetTaskById(string id)
         {
             // Пример функции для получения задачи по ID
@@ -81,6 +88,7 @@ namespace TaskQueue.Controllers
 
         // GET /queue/status/{id}
         [HttpGet("status/{id}")]
+        [SwaggerOperation(Summary = "Получить статус задачи")]
         public IActionResult GetTaskStatus(string id)
         {
             // Пример функции для получения статуса задачи по ID
@@ -90,6 +98,7 @@ namespace TaskQueue.Controllers
 
         // GET /queue/metrics/
         [HttpGet("metrics")]
+        [SwaggerOperation(Summary = "Получить метрики TaskQueue")]
         public IActionResult GetMetrics()
         {
             // Пример функции для получения метрик

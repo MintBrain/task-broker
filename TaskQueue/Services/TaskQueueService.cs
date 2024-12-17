@@ -28,7 +28,7 @@ namespace TaskQueue.Services
                 Id = count++,
                 Type = TaskType.Addition,
                 Data = "[1,3]",
-                Ttl = 3600,
+                Ttl = 3600 * 1000,
                 Status = TaskStatus.New,
                 Result = ""
             };
@@ -36,33 +36,48 @@ namespace TaskQueue.Services
             var message = JsonConvert.SerializeObject(_task);
             var body = Encoding.UTF8.GetBytes(message);
             var ch = await _rabbitMqService.GetChannelAsync();
+            var properties = new BasicProperties
+            {
+                Expiration = (task.Ttl).ToString(),
+            };
+            
             await ch.BasicPublishAsync(
                 exchange: string.Empty, 
-                routingKey: "taskQueue", 
+                routingKey: "taskQueue",
+                mandatory: true,
+                basicProperties: properties,
                 body: body);
         }
-        //
-        // public void RestartTask(string id)
-        // {
-        //     // Логика перезапуска задачи
-        // }
-        //
-        // public Task GetTaskById(string id)
-        // {
-        //     // Логика получения задачи по ID
-        //     return new Task(); // Пример возврата
-        // }
-        //
-        // public string GetTaskStatus(string id)
-        // {
-        //     // Логика получения статуса задачи
-        //     return "Статус"; // Пример возврата
-        // }
-        //
-        // public object GetMetrics()
-        // {
-        //     // Логика получения метрик
-        //     return new { }; // Пример возврата метрик
-        // }
+
+        public void RestartTask(int id)
+        {
+            // TODO: Store `Restarting` status to DB
+            // TODO: Abandon task on rabbitQueue? to drop it in TaskExecutor
+            // TODO: Store `RestartFailed` or `RestartSuccess`, get this info from `TaskExecutor` via RabbitMQ
+        }
+        
+        public TaskItem GetTaskById(int id)
+        {
+            // TODO: Get and return TaskItem from DB
+
+            return new TaskItem();
+        }
+        
+        public TaskStatus GetTaskStatus(int id)
+        {
+            // Логика получения статуса задачи
+            return TaskStatus.New;
+        }
+        
+        public object GetMetrics()
+        {
+            // TODO: Return Metrics:
+            // - Количество поступивших задач (last id in DB)
+            // - Количество задач по статусам
+            // - Время ожидания выполнения задач (среднее?)
+            // - Количество текущих задач в очереди
+            
+            return new { }; // Пример возврата метрик
+        }
     }
 }
