@@ -92,10 +92,10 @@ public class Startup
         // Настройка аутентификации
         app.UseAuthentication();
 
+        app.UseRouting();
+
         // Настройка авторизации
         app.UseAuthorization();
-
-        app.UseRouting();
 
         // Добавление метрик Prometheus
         app.UseHttpMetrics(); // Автоматический сбор HTTP метрик
