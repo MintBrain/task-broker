@@ -1,31 +1,39 @@
+using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.Annotations;
+using RabbitMQ.Client;
+using TaskQueue.Services;
+
 // using Prometheus;
 
 namespace TaskQueue
 {
-    public class Startup
+    public class Startup(IConfiguration configuration)
     {
         
-        public IConfiguration Configuration { get; }
-
-        public Startup(IConfiguration configuration)
-        {
-            Configuration = configuration;
-        }
+        public IConfiguration Configuration { get; } = configuration;
+        
         public void ConfigureServices(IServiceCollection services)
         {
             // Использование строки подключения к базе данных
             var connectionString = Configuration.GetConnectionString("DefaultConnection");
+            
+            services.AddSingleton<IRabbitMqService, RabbitMqService>();
 
-            // Использование настроек RabbitMQ
-            var rabbitMqHost = Configuration["RabbitMQ:Host"];
-            var rabbitMqQueueName = Configuration["RabbitMQ:QueueName"];
+            // Register TaskQueueService as Scoped
+            services.AddScoped<TaskQueueService>();
+
+            services.AddSingleton<IConfiguration>(Configuration);
+
+            // Call asynchronous configuration method for RabbitMQ setup
+            // services.AddSingleton<Func<Task>>(async () => await ConfigureRabbitMq(services));
             
             // Использование пользовательских настроек
             var defaultTTL = Configuration.GetValue<int>("TaskSettings:DefaultTTL");
+            
             
             // Добавление необходимых сервисов для работы с контроллерами и зависимостями
             services.AddControllers();
@@ -36,6 +44,7 @@ namespace TaskQueue
             services.AddSwaggerGen(option =>
             {
                 option.SwaggerDoc("v1", new OpenApiInfo { Title = "TaskQueue API", Version = "v1" });
+                option.EnableAnnotations(); 
             });
 
             services.AddMetrics(); // Добавление поддержки метрик

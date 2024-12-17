@@ -1,24 +1,38 @@
+using System.ComponentModel;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 using TaskQueue.Models;
+using Swashbuckle.AspNetCore.Annotations;
+using TaskQueue.Services;
 
 namespace TaskQueue.Controllers
 {
     [ApiController]
-    [Route("/")]
+    [Route("/queue")]
     public class TaskQueueController : ControllerBase
     {
+        private readonly TaskQueueService _taskQueueService;
+
+        public TaskQueueController(TaskQueueService taskQueueService)
+        {
+            _taskQueueService = taskQueueService;
+        }
+
         // GET /
         [HttpGet]
+        [SwaggerOperation(
+            Summary = "Get a welcome message", 
+            Description = "Returns a simple welcome message from the API.")]
         public IActionResult Get()
         {
             return Ok("Welcome to TaskQueue API!");
         }
         
         // POST /queue
-        [HttpPost("add")]
-        public IActionResult AddTask([FromBody] TaskItem task)
+        [HttpPost("")]
+        public async Task<IActionResult> AddTask([FromBody] TaskItem task)
         {
+            await _taskQueueService.AddTask(task);
             // Пример функции для добавления задачи в очередь
             // Здесь должна быть логика для валидации и добавления задачи в RabbitMQ
             return Ok("Задача добавлена"); // Возвращаем успех

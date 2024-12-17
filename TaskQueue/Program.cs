@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using TaskQueue.Services;
 
 namespace TaskQueue
 {
@@ -17,13 +18,11 @@ namespace TaskQueue
                 {
                     var env = hostingContext.HostingEnvironment;
 
+                    Console.WriteLine($"Environment Name: {env.EnvironmentName}");
                     // Загружаем appsettings.json
                     config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-                        // Загружаем appsettings.{Environment}.json на основе текущей среды (Development, Production и т.д.)
-                        .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true, reloadOnChange: true);
-
-                    // Также можно загружать переменные среды и другие источники конфигурации
-                    config.AddEnvironmentVariables();
+                        .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true, reloadOnChange: true)
+                        .AddEnvironmentVariables();
                 })
                 .ConfigureWebHostDefaults(webBuilder => { webBuilder.UseStartup<Startup>(); });
     }
