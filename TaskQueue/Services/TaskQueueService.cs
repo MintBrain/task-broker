@@ -1,35 +1,82 @@
+using System.Text;
+using RabbitMQ.Client;
+using TaskQueue.Models;
+using Newtonsoft.Json;
+using TaskStatus = TaskQueue.Models.TaskStatus;
+
+
 namespace TaskQueue.Services
 {
     public class TaskQueueService
     {
+        private readonly IRabbitMqService _rabbitMqService;
+        private int count = 0;
+
+        public TaskQueueService(IRabbitMqService rabbitMqService)
+        {
+            _rabbitMqService = rabbitMqService;
+        }
+        
         // Здесь будут методы для работы с задачами
         // Например, добавление задачи в RabbitMQ, получение задач и пр.
 
-        public void AddTask(Task task)
+        public async Task AddTask(TaskItem task)
         {
-            // Логика добавления задачи
+            // TODO: Add task to DB and get ID
+            var _task = new TaskItem
+            {
+                Id = count++,
+                Type = TaskType.Addition,
+                Data = "[1,3]",
+                Ttl = 3600 * 1000,
+                Status = TaskStatus.New,
+                Result = ""
+            };
+            
+            var message = JsonConvert.SerializeObject(_task);
+            var body = Encoding.UTF8.GetBytes(message);
+            var ch = await _rabbitMqService.GetChannelAsync();
+            var properties = new BasicProperties
+            {
+                Expiration = (task.Ttl).ToString(),
+            };
+            
+            await ch.BasicPublishAsync(
+                exchange: string.Empty, 
+                routingKey: "taskQueue",
+                mandatory: true,
+                basicProperties: properties,
+                body: body);
         }
 
-        public void RestartTask(string id)
+        public void RestartTask(int id)
         {
-            // Логика перезапуска задачи
+            // TODO: Store `Restarting` status to DB
+            // TODO: Abandon task on rabbitQueue? to drop it in TaskExecutor
+            // TODO: Store `RestartFailed` or `RestartSuccess`, get this info from `TaskExecutor` via RabbitMQ
         }
-
-        public Task GetTaskById(string id)
+        
+        public TaskItem GetTaskById(int id)
         {
-            // Логика получения задачи по ID
-            return new Task(); // Пример возврата
-        }
+            // TODO: Get and return TaskItem from DB
 
-        public string GetTaskStatus(string id)
+            return new TaskItem();
+        }
+        
+        public TaskStatus GetTaskStatus(int id)
         {
             // Логика получения статуса задачи
-            return "Статус"; // Пример возврата
+            return TaskStatus.New;
         }
-
+        
         public object GetMetrics()
         {
-            // Логика получения метрик
+            // TODO: Return Metrics:
+            // - Количество поступивших задач (last id in DB)
+            // - Количество задач по статусам
+            // - Время ожидания выполнения задач (среднее?)
+            // - Количество текущих задач в очереди
+            
             return new { }; // Пример возврата метрик
         }
     }

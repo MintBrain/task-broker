@@ -1,17 +1,41 @@
+using System.ComponentModel;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 using TaskQueue.Models;
+using Swashbuckle.AspNetCore.Annotations;
+using TaskQueue.Services;
 
 namespace TaskQueue.Controllers
 {
     [ApiController]
-    [Route("queue")]
+    [Route("/queue")]
     public class TaskQueueController : ControllerBase
     {
-        // POST /queue
-        [HttpPost]
-        public IActionResult AddTask([FromBody] TaskItem task)
+        private readonly TaskQueueService _taskQueueService;
+
+        public TaskQueueController(TaskQueueService taskQueueService)
         {
+            _taskQueueService = taskQueueService;
+        }
+
+        // GET /
+        [HttpGet]
+        [SwaggerOperation(
+            Summary = "Get a welcome message", 
+            Description = "Returns a simple welcome message from the API.")]
+        public IActionResult Get()
+        {
+            return Ok("Welcome to TaskQueue API!");
+        }
+        
+        // POST /queue
+        [HttpPost("")]
+        [SwaggerOperation(
+            Summary = "Добавить задачу в очередь", 
+            Description = "Валидирует, добавляет задачу в БД и брокер сообщений")]
+        public async Task<IActionResult> AddTask([FromBody] TaskItem task)
+        {
+            await _taskQueueService.AddTask(task);
             // Пример функции для добавления задачи в очередь
             // Здесь должна быть логика для валидации и добавления задачи в RabbitMQ
             return Ok("Задача добавлена"); // Возвращаем успех
@@ -19,6 +43,7 @@ namespace TaskQueue.Controllers
 
         // POST /queue/restart/{id}
         [HttpPost("restart/{id}")]
+        [SwaggerOperation(Summary = "Перезапустить задачу")]
         public IActionResult RestartTask(string id)
         {
             // Пример функции для перезапуска задачи по ID
@@ -27,7 +52,8 @@ namespace TaskQueue.Controllers
         }
         
         [HttpPost("result")]
-        public async Task<IActionResult> ReceiveTaskResult([FromBody] TaskResult result)
+        [SwaggerOperation(Summary = "Получить результат выполнения задачи")]
+        public async Task<IActionResult> ReceiveTaskResult([FromBody] TaskResult? result)
         {
             if (result == null || string.IsNullOrEmpty(result.Id))
             {
@@ -35,13 +61,14 @@ namespace TaskQueue.Controllers
             }
 
             // Обновление задачи в БД по Id
-            await _taskService.UpdateTaskResult(result.Id, result.Status, result.Result);
+            // await _taskService.UpdateTaskResult(result.Id, result.Status, result.Result);
 
             return Ok();
         }
 
         // GET /queue/tasks
         [HttpGet("tasks")]
+        [SwaggerOperation(Summary = "Получить список всех задач")]
         public IActionResult GetAllTasks()
         {
             // Пример функции для получения всех задач
@@ -51,6 +78,7 @@ namespace TaskQueue.Controllers
 
         // GET /queue/tasks/{id}
         [HttpGet("tasks/{id}")]
+        [SwaggerOperation(Summary = "Получить подробное описание задачи")]
         public IActionResult GetTaskById(string id)
         {
             // Пример функции для получения задачи по ID
@@ -60,6 +88,7 @@ namespace TaskQueue.Controllers
 
         // GET /queue/status/{id}
         [HttpGet("status/{id}")]
+        [SwaggerOperation(Summary = "Получить статус задачи")]
         public IActionResult GetTaskStatus(string id)
         {
             // Пример функции для получения статуса задачи по ID
@@ -69,6 +98,7 @@ namespace TaskQueue.Controllers
 
         // GET /queue/metrics/
         [HttpGet("metrics")]
+        [SwaggerOperation(Summary = "Получить метрики TaskQueue")]
         public IActionResult GetMetrics()
         {
             // Пример функции для получения метрик
