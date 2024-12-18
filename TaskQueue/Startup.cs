@@ -1,11 +1,9 @@
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi.Models;
+using Microsoft.EntityFrameworkCore;
 using TaskQueue.Database;
 using TaskQueue.Repositories;
 using TaskQueue.Services;
-using Microsoft.EntityFrameworkCore;
+
 // using Prometheus;
 
 namespace TaskQueue
@@ -34,12 +32,8 @@ namespace TaskQueue
 
             services.AddSingleton<IConfiguration>(Configuration);
 
-            // Call asynchronous configuration method for RabbitMQ setup
-            // services.AddSingleton<Func<Task>>(async () => await ConfigureRabbitMq(services));
-            
             // Использование пользовательских настроек
             var defaultTTL = Configuration.GetValue<int>("TaskSettings:DefaultTTL");
-            
             
             // Добавление необходимых сервисов для работы с контроллерами и зависимостями
             services.AddControllers();
@@ -72,7 +66,6 @@ namespace TaskQueue
                 
             });
             app.UseSwagger();
-            //app.UseSwaggerUI();
             app.UseSwaggerUI(c =>
             {
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "TaskQueue API V1");

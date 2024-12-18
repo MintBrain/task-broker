@@ -1,74 +1,147 @@
 using Microsoft.AspNetCore.Mvc;
-using TaskQueue.Database;
+using Swashbuckle.AspNetCore.Annotations;
+using TaskQueue.Services;
 using TaskQueue.Models;
-using Microsoft.EntityFrameworkCore;
 
 namespace TaskQueue.Controllers
 {
     [ApiController]
-    [Route("queue")]
+    [Route("/queue")]
     public class TaskQueueController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly TaskQueueService _taskQueueService;
 
-        public TaskQueueController(AppDbContext context)
+        public TaskQueueController(TaskQueueService taskQueueService)
         {
-            _context = context;
+            _taskQueueService = taskQueueService;
         }
 
+        [HttpGet]
+        [SwaggerOperation(
+            Summary = "Get a welcome message", 
+            Description = "Returns a simple welcome message from the API.")]
+        public IActionResult Get()
+        {
+            return Ok("Welcome to TaskQueue API!");
+        }
+        
         [HttpPost]
+        [SwaggerOperation(
+            Summary = "Добавить задачу в очередь", 
+            Description = "Валидирует, добавляет задачу в БД и брокер сообщений")]
         public async Task<IActionResult> AddTask([FromBody] TaskItem task)
         {
-            if (task == null || task.Id == 0)
+            await _taskQueueService.AddTask(task);
+            if (task == null)  // TODO: Тут нужно добавить валидацию 
                 return BadRequest("Invalid task data");
 
-            _context.Tasks.Add(task);
-            await _context.SaveChangesAsync();
-            return Ok("Task added");
+            try
+            {
+                var taskId = await _taskQueueService.AddTask(task);
+                return Ok(taskId);
+            }
+            catch (Exception e) // TODO: Handle various exceptions for DB, RabbitMq, ...
+            {
+                Console.WriteLine(e); // TODO: Store in Log
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+        }
+        
+        [HttpPost("restart/{id:int}")]
+        [SwaggerOperation(Summary = "Перезапустить задачу")]
+        public async Task<IActionResult> RestartTask(int id)
+        {
+            try
+            {
+                await _taskQueueService.RestartTask(id);
+                return Ok($"Задача {id} перезапущена");
+            }
+            catch (Exception e) // TODO: Handle exception for wrong ID 
+            {
+                Console.WriteLine(e); // TODO: Store in Log
+                return StatusCode(StatusCodes.Status500InternalServerError); 
+            }
         }
 
-        [HttpPost("result")]
-        public async Task<IActionResult> ReceiveTaskResult([FromBody] TaskResult result)
+        [HttpGet("result")]
+        [SwaggerOperation(Summary = "Получить результат выполнения задачи")]
+        public async Task<IActionResult> SendTaskResult([FromBody] int id)
         {
-            if (result == null || string.IsNullOrEmpty(result.Id))
-                return BadRequest("Invalid task result");
-
-            var task = await _context.Tasks.FindAsync(result.Id);
-            if (task == null)
-                return NotFound($"Task {result.Id} not found");
-
-            task.Status = result.Status;
-            task.Result = result.Result;
-            await _context.SaveChangesAsync();
-
-            return Ok("Task result updated");
+            try
+            {
+                var result = await _taskQueueService.GetTaskResultById(id);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException e)
+            {
+                return NotFound($"Task {id} not found");
+            }
+            catch (Exception e) // TODO: Handle exception for wrong ID 
+            {
+                Console.WriteLine(e); // TODO: Store in Log
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
         }
 
         [HttpGet("tasks")]
+        [SwaggerOperation(Summary = "Получить список всех задач")]
         public async Task<IActionResult> GetAllTasks()
         {
-            var tasks = await _context.Tasks.ToListAsync();
-            return Ok(tasks);
+            try
+            {
+                var tasks = await _taskQueueService.GetAllTasks();
+                return Ok(tasks);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e); // TODO: Store in Log
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
         }
 
-        [HttpGet("tasks/{id}")]
-        public async Task<IActionResult> GetTaskById(string id)
+        [HttpGet("tasks/{id:int}")]
+        [SwaggerOperation(Summary = "Получить подробное описание задачи")]
+        public async Task<IActionResult> GetTaskById(int id)
         {
-            var task = await _context.Tasks.FindAsync(id);
-            if (task == null)
+            try
+            {
+                var task = await _taskQueueService.GetTaskById(id);
+                return Ok(task);
+            }
+            catch (KeyNotFoundException e)
+            {
                 return NotFound($"Task {id} not found");
-
-            return Ok(task);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e); // TODO: Store in Log
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
         }
 
-        [HttpGet("status/{id}")]
-        public async Task<IActionResult> GetTaskStatus(string id)
+        [HttpGet("status/{id:int}")]
+        [SwaggerOperation(Summary = "Получить статус задачи")]
+        public async Task<IActionResult> GetTaskStatus(int id)
         {
-            var task = await _context.Tasks.FindAsync(id);
-            if (task == null)
-                return NotFound($"Task {id} not found");
-
-            return Ok(new { task.Id, task.Status });
+            try
+            {
+                var taskStatus = await _taskQueueService.GetTaskStatus(id);
+                return Ok(taskStatus);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e); // TODO: Store in Log
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+        }
+        
+        [HttpGet("metrics")]
+        [SwaggerOperation(Summary = "Получить метрики TaskQueue")]
+        public IActionResult GetMetrics()
+        {
+            // Пример функции для получения метрик
+            // Здесь должна быть логика для извлечения метрик
+            return Ok("Метрики"); // Возвращаем метрики
         }
     }
 }

@@ -1,32 +1,9 @@
-﻿using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
-using TaskQueue.Database;
-using TaskQueue.Services;
+﻿using TaskQueue.Database;
 
 namespace TaskQueue
 {
     public class Program
     {
-        //public static void Main(string[] args)
-        //{
-        //    CreateHostBuilder(args).Build().Run();
-        //}
-
-        //private static IHostBuilder CreateHostBuilder(string[] args) =>
-        //    Host.CreateDefaultBuilder(args)
-        //        .ConfigureAppConfiguration((hostingContext, config) =>
-        //        {
-        //            var env = hostingContext.HostingEnvironment;
-
-        //            Console.WriteLine($"Environment Name: {env.EnvironmentName}");
-        //            // Загружаем appsettings.json
-        //            config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-        //                .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true, reloadOnChange: true)
-        //                .AddEnvironmentVariables();
-        //        })
-        //        .ConfigureWebHostDefaults(webBuilder => { webBuilder.UseStartup<Startup>(); });
-
         public static void Main(string[] args)
         {
             var host = CreateHostBuilder(args).Build();
@@ -44,13 +21,13 @@ namespace TaskQueue
                 catch (Exception ex)
                 {
                     Console.WriteLine($"An error occurred while connecting to the database: {ex.Message}");
+                    return;
                 }
             }
-
             host.Run();
         }
 
-        public static IHostBuilder CreateHostBuilder(string[] args) =>
+        private static IHostBuilder CreateHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
                 .ConfigureAppConfiguration((hostingContext, config) =>
                 {
