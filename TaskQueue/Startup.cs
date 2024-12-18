@@ -1,12 +1,11 @@
-using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi.Models;
-using Swashbuckle.AspNetCore.Annotations;
-using RabbitMQ.Client;
+using TaskQueue.Database;
+using TaskQueue.Repositories;
 using TaskQueue.Services;
-
+using Microsoft.EntityFrameworkCore;
 // using Prometheus;
 
 namespace TaskQueue
@@ -19,12 +18,19 @@ namespace TaskQueue
         public void ConfigureServices(IServiceCollection services)
         {
             // Использование строки подключения к базе данных
+            // Подключение к PostgreSQL
             var connectionString = Configuration.GetConnectionString("DefaultConnection");
-            
+            services.AddDbContext<AppDbContext>(options =>
+                options.UseNpgsql(connectionString));
+
             services.AddSingleton<IRabbitMqService, RabbitMqService>();
 
-            // Register TaskQueueService as Scoped
+            // Регистрация репозитория
+            services.AddScoped<TaskRepository>();
+
+            // Регистрация сервисов
             services.AddScoped<TaskQueueService>();
+
 
             services.AddSingleton<IConfiguration>(Configuration);
 
@@ -66,7 +72,12 @@ namespace TaskQueue
                 
             });
             app.UseSwagger();
-            app.UseSwaggerUI();
+            //app.UseSwaggerUI();
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "TaskQueue API V1");
+                c.RoutePrefix = string.Empty;
+            });
         }
     }
 }

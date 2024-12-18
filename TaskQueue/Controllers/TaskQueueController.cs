@@ -1,109 +1,74 @@
-using System.ComponentModel;
 using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
+using TaskQueue.Database;
 using TaskQueue.Models;
-using Swashbuckle.AspNetCore.Annotations;
-using TaskQueue.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace TaskQueue.Controllers
 {
     [ApiController]
-    [Route("/queue")]
+    [Route("queue")]
     public class TaskQueueController : ControllerBase
     {
-        private readonly TaskQueueService _taskQueueService;
+        private readonly AppDbContext _context;
 
-        public TaskQueueController(TaskQueueService taskQueueService)
+        public TaskQueueController(AppDbContext context)
         {
-            _taskQueueService = taskQueueService;
+            _context = context;
         }
 
-        // GET /
-        [HttpGet]
-        [SwaggerOperation(
-            Summary = "Get a welcome message", 
-            Description = "Returns a simple welcome message from the API.")]
-        public IActionResult Get()
-        {
-            return Ok("Welcome to TaskQueue API!");
-        }
-        
-        // POST /queue
-        [HttpPost("")]
-        [SwaggerOperation(
-            Summary = "Добавить задачу в очередь", 
-            Description = "Валидирует, добавляет задачу в БД и брокер сообщений")]
+        [HttpPost]
         public async Task<IActionResult> AddTask([FromBody] TaskItem task)
         {
-            await _taskQueueService.AddTask(task);
-            // Пример функции для добавления задачи в очередь
-            // Здесь должна быть логика для валидации и добавления задачи в RabbitMQ
-            return Ok("Задача добавлена"); // Возвращаем успех
+            if (task == null || task.Id == 0)
+                return BadRequest("Invalid task data");
+
+            _context.Tasks.Add(task);
+            await _context.SaveChangesAsync();
+            return Ok("Task added");
         }
 
-        // POST /queue/restart/{id}
-        [HttpPost("restart/{id}")]
-        [SwaggerOperation(Summary = "Перезапустить задачу")]
-        public IActionResult RestartTask(string id)
-        {
-            // Пример функции для перезапуска задачи по ID
-            // Здесь должна быть логика для перезапуска задачи
-            return Ok($"Задача {id} перезапущена");
-        }
-        
         [HttpPost("result")]
-        [SwaggerOperation(Summary = "Получить результат выполнения задачи")]
-        public async Task<IActionResult> ReceiveTaskResult([FromBody] TaskResult? result)
+        public async Task<IActionResult> ReceiveTaskResult([FromBody] TaskResult result)
         {
             if (result == null || string.IsNullOrEmpty(result.Id))
-            {
                 return BadRequest("Invalid task result");
-            }
 
-            // Обновление задачи в БД по Id
-            // await _taskService.UpdateTaskResult(result.Id, result.Status, result.Result);
+            var task = await _context.Tasks.FindAsync(result.Id);
+            if (task == null)
+                return NotFound($"Task {result.Id} not found");
 
-            return Ok();
+            task.Status = result.Status;
+            task.Result = result.Result;
+            await _context.SaveChangesAsync();
+
+            return Ok("Task result updated");
         }
 
-        // GET /queue/tasks
         [HttpGet("tasks")]
-        [SwaggerOperation(Summary = "Получить список всех задач")]
-        public IActionResult GetAllTasks()
+        public async Task<IActionResult> GetAllTasks()
         {
-            // Пример функции для получения всех задач
-            // Здесь должна быть логика для извлечения всех задач из базы данных
-            return Ok("Список всех задач"); // Возвращаем список задач
+            var tasks = await _context.Tasks.ToListAsync();
+            return Ok(tasks);
         }
 
-        // GET /queue/tasks/{id}
         [HttpGet("tasks/{id}")]
-        [SwaggerOperation(Summary = "Получить подробное описание задачи")]
-        public IActionResult GetTaskById(string id)
+        public async Task<IActionResult> GetTaskById(string id)
         {
-            // Пример функции для получения задачи по ID
-            // Здесь должна быть логика для получения задачи по ID
-            return Ok($"Задача с ID {id}"); // Возвращаем задачу
+            var task = await _context.Tasks.FindAsync(id);
+            if (task == null)
+                return NotFound($"Task {id} not found");
+
+            return Ok(task);
         }
 
-        // GET /queue/status/{id}
         [HttpGet("status/{id}")]
-        [SwaggerOperation(Summary = "Получить статус задачи")]
-        public IActionResult GetTaskStatus(string id)
+        public async Task<IActionResult> GetTaskStatus(string id)
         {
-            // Пример функции для получения статуса задачи по ID
-            // Здесь должна быть логика для получения статуса задачи
-            return Ok($"Статус задачи {id}"); // Возвращаем статус задачи
-        }
+            var task = await _context.Tasks.FindAsync(id);
+            if (task == null)
+                return NotFound($"Task {id} not found");
 
-        // GET /queue/metrics/
-        [HttpGet("metrics")]
-        [SwaggerOperation(Summary = "Получить метрики TaskQueue")]
-        public IActionResult GetMetrics()
-        {
-            // Пример функции для получения метрик
-            // Здесь должна быть логика для извлечения метрик
-            return Ok("Метрики"); // Возвращаем метрики
+            return Ok(new { task.Id, task.Status });
         }
     }
 }

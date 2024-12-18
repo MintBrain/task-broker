@@ -1,24 +1,50 @@
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using TaskQueue.Database;
+using TaskQueue.Models;
+
 namespace TaskQueue.Repositories
 {
     public class TaskRepository
     {
-        // Здесь будут методы для работы с базой данных
-        // Например, для создания, чтения, обновления и удаления задач
+        private readonly AppDbContext _dbContext;
 
-        // public void SaveTask(Task task)
-        // {
-        //     // Логика сохранения задачи в базе данных
-        // }
-        //
-        // public Task GetTask(string id)
-        // {
-        //     // Логика получения задачи из базы данных
-        //     return new Task(); // Пример возврата
-        // }
-        //
-        // public void UpdateTask(Task task)
-        // {
-        //     // Логика обновления задачи в базе данных
-        // }
+        public TaskRepository(AppDbContext dbContext)
+        {
+            _dbContext = dbContext;
+        }
+
+        public async Task AddTaskAsync(TaskItem task)
+        {
+            await _dbContext.Tasks.AddAsync(task);
+            await _dbContext.SaveChangesAsync();
+        }
+
+        public async Task<TaskItem> GetTaskByIdAsync(int id)
+        {
+            return await _dbContext.Tasks.FindAsync(id);
+        }
+
+        public async Task<List<TaskItem>> GetAllTasksAsync()
+        {
+            return await _dbContext.Tasks.ToListAsync();
+        }
+
+        public async Task UpdateTaskAsync(TaskItem task)
+        {
+            _dbContext.Tasks.Update(task);
+            await _dbContext.SaveChangesAsync();
+        }
+
+        public async Task DeleteTaskAsync(int id)
+        {
+            var task = await GetTaskByIdAsync(id);
+            if (task != null)
+            {
+                _dbContext.Tasks.Remove(task);
+                await _dbContext.SaveChangesAsync();
+            }
+        }
     }
 }
