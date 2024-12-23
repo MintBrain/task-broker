@@ -22,6 +22,23 @@ namespace TaskQueue.Services
             _rabbitMqService = rabbitMqService;
             _appDbContextContext = appDbContextContext;
         }
+        
+        public async Task StartListening()
+        {
+            // Subscribe to taskQueue
+            // await _rabbitMqService.SubscribeToQueueAsync("taskQueue", async message =>
+            // {
+            //     Console.WriteLine($"Received message from taskQueue: {message}");
+            //     // Process the task and handle the message
+            // });
+
+            // Subscribe to dlq (Dead Letter Queue)
+            await _rabbitMqService.SubscribeToQueueAsync("dlq", async message =>
+            {
+                Console.WriteLine($"Dead-lettered message: {message}");
+                // Handle dead-lettered message
+            });
+        }
 
         public async Task<int> AddTask(TaskDto task)
         {
@@ -64,11 +81,10 @@ namespace TaskQueue.Services
         
         public async Task<TaskItem> GetTaskById(int id)
         {
-            // TODO: Get and return TaskItem from DB
             var task = await _appDbContextContext.Tasks.FindAsync(id);
             if (task == null)
                 throw new KeyNotFoundException();
-            return new TaskItem();
+            return task;
         }
 
         public async Task<TaskResult> GetTaskResultById(int id)

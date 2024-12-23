@@ -26,6 +26,9 @@ namespace TaskQueue
             services.AddScoped<TaskQueueService>();             // Регистрация сервиса
             services.AddSingleton<IConfiguration>(Configuration);
             
+            // services.AddHostedService<RabbitMqBackgroundService>();
+            services.AddSingleton<IHostedService, RabbitMqBackgroundService>();
+            
             // Добавление необходимых сервисов для работы с контроллерами и зависимостями
             services.AddControllers();
 
