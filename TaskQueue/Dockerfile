@@ -1,4 +1,5 @@
 # !!RUN FROM Parent directory /task-broker
+# docker build -f TaskQueue/Dockerfile .
 # Use official .NET SDK image to build the application
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 

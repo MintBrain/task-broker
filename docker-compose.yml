@@ -17,25 +17,25 @@ services:
   taskqueue:
     image: yourusername/taskqueue:latest
     build:
-      context: ./TaskQueue
-      dockerfile: Dockerfile
+      context: ./
+      dockerfile: ./TaskQueue/Dockerfile
     ports:
-      - "5001:80" # Проброс порта для TaskQueue
+      - "5001:5001" # Проброс порта для TaskQueue
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Host=db;Database=taskqueue;Username=postgres;Password=yourpassword
       - RabbitMQ__Host=rabbitmq
       - RabbitMQ__QueueName=taskqueue
 
-  taskexecutor:
-    image: yourusername/taskexecutor:latest
-    build:
-      context: ./TaskExecutor
-      dockerfile: Dockerfile
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - RabbitMQ__Host=rabbitmq
-      - RabbitMQ__QueueName=taskqueue
+#  taskexecutor:
+#    image: yourusername/taskexecutor:latest
+#    build:
+#      context: ./TaskExecutor
+#      dockerfile: Dockerfile
+#    environment:
+#      - ASPNETCORE_ENVIRONMENT=Development
+#      - RabbitMQ__Host=rabbitmq
+#      - RabbitMQ__QueueName=taskqueue
 
   rabbitmq:
     image: rabbitmq:management

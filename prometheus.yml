@@ -9,7 +9,7 @@ scrape_configs:
 
   - job_name: 'taskqueue'
     static_configs:
-      - targets: ['taskqueue:80'] # Сервис taskqueue
+      - targets: ['taskqueue:5001'] # Сервис taskqueue
 
   - job_name: 'rabbitmq'
     static_configs:

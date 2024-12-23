@@ -87,7 +87,7 @@ public class Startup
         }
 
         // Принудительное использование HTTPS
-        app.UseHttpsRedirection();
+        // app.UseHttpsRedirection();
 
         // Настройка аутентификации
         app.UseAuthentication();
