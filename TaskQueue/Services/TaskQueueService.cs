@@ -16,31 +16,25 @@ namespace TaskQueue.Services
     {
         private readonly IRabbitMqService _rabbitMqService;
         private readonly AppDbContext _appDbContextContext;
-        private int count = 0;
-
+        
         public TaskQueueService(IRabbitMqService rabbitMqService, AppDbContext appDbContextContext)
         {
             _rabbitMqService = rabbitMqService;
             _appDbContextContext = appDbContextContext;
         }
-        
-        // Здесь будут методы для работы с задачами
-        // Например, добавление задачи в RabbitMQ, получение задач и пр.
 
-        public async Task<int> AddTask(TaskItem task)
+        public async Task<int> AddTask(TaskDto task)
         {
-            // TODO: Add task to DB and get ID
             var _task = new TaskItem
             {
-                Id = count++,
-                Type = TaskType.Addition,
-                Data = "[1,3]",
-                Ttl = 3600 * 1000,
+                Type = task.Type,
+                Data = task.Data,
+                Ttl = task.Ttl,
                 Status = TaskStatus.New,
                 Result = ""
             };
             
-            _appDbContextContext.Tasks.Add(task);  // TODO: Мы должны получать ID из БД
+            _task.Id = _appDbContextContext.Tasks.Add(_task).Entity.Id;  // TODO: Мы должны получать ID из БД
             await _appDbContextContext.SaveChangesAsync();
             
             var message = JsonConvert.SerializeObject(_task);

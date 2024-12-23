@@ -22,25 +22,16 @@ namespace TaskQueue
                 options.UseNpgsql(connectionString));
 
             services.AddSingleton<IRabbitMqService, RabbitMqService>();
-
-            // Регистрация репозитория
-            services.AddScoped<TaskRepository>();
-
-            // Регистрация сервисов
-            services.AddScoped<TaskQueueService>();
-
-
+            services.AddScoped<TaskRepository>();               // Регистрация репозитория
+            services.AddScoped<TaskQueueService>();             // Регистрация сервиса
             services.AddSingleton<IConfiguration>(Configuration);
-
-            // Использование пользовательских настроек
-            var defaultTTL = Configuration.GetValue<int>("TaskSettings:DefaultTTL");
             
             // Добавление необходимых сервисов для работы с контроллерами и зависимостями
             services.AddControllers();
-            // Настройка подключения к базе данных, кэшу и т.д. будет добавлена здесь
 
             // Добавление метрик Prometheus
             // services.AddHttpMetrics(); // Сбор HTTP метрик
+            
             services.AddSwaggerGen(option =>
             {
                 option.SwaggerDoc("v1", new OpenApiInfo { Title = "TaskQueue API", Version = "v1" });

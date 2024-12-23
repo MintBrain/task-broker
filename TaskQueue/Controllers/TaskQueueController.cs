@@ -10,10 +10,12 @@ namespace TaskQueue.Controllers
     public class TaskQueueController : ControllerBase
     {
         private readonly TaskQueueService _taskQueueService;
+        private readonly int _defaultTtl;
 
-        public TaskQueueController(TaskQueueService taskQueueService)
+        public TaskQueueController(TaskQueueService taskQueueService, IConfiguration configuration)
         {
             _taskQueueService = taskQueueService;
+            _defaultTtl = configuration.GetValue<int>("TaskSettings:DefaultTTL");
         }
 
         [HttpGet]
@@ -29,11 +31,16 @@ namespace TaskQueue.Controllers
         [SwaggerOperation(
             Summary = "Добавить задачу в очередь", 
             Description = "Валидирует, добавляет задачу в БД и брокер сообщений")]
-        public async Task<IActionResult> AddTask([FromBody] TaskItem task)
+        public async Task<IActionResult> AddTask([FromBody] TaskDto task)
         {
-            await _taskQueueService.AddTask(task);
-            if (task == null)  // TODO: Тут нужно добавить валидацию 
-                return BadRequest("Invalid task data");
+            if (!ModelState.IsValid) 
+                return BadRequest(ModelState);
+            
+            // Set default TTL if not provided
+            if (task.Ttl <= 0)
+            {
+                task.Ttl = _defaultTtl;
+            }
 
             try
             {
