@@ -4,7 +4,10 @@ using Newtonsoft.Json;
 using Microsoft.EntityFrameworkCore;
 using TaskQueue.Models;
 using TaskQueue.Database;
-using TaskStatus = TaskQueue.Models.TaskStatus;
+using TaskQueue.Dto;
+using Shared.Enums;
+using Shared.Models;
+using TaskStatus = Shared.Enums.TaskStatus;
 
 
 namespace TaskQueue.Services

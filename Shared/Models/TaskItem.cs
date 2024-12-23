@@ -1,23 +1,8 @@
-namespace TaskQueue.Models
-{
-    public enum TaskType
-    {
-        Addition = 0,
-        Subtraction = 1,
-        Multiplication = 2,
-        Division = 3,
-    }
+using Shared.Enums;
+using TaskStatus = Shared.Enums.TaskStatus;
 
-    public enum TaskStatus
-    {
-        New = 0,
-        Pending = 1,
-        InProgress = 2,
-        Completed = 3,
-        Failed = 4
-        // Add other statuses as necessary
-    }
-    
+namespace Shared.Models
+{
     public class TaskItem
     {
         public int Id { get; set; }      // Идентификатор задачи
@@ -25,6 +10,6 @@ namespace TaskQueue.Models
         public string Data { get; set; }    // Исходные данные задания
         public int Ttl { get; set; }        // Время жизни задания в миллисекундах
         public TaskStatus Status { get; set; }  // Статус выполнения
-        public string Result { get; set; }  // Результат выполнения
+        public string Result { get; set; } // Результат выполнения
     }
 }

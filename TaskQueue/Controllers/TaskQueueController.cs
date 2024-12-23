@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
+using TaskQueue.Dto;
 using TaskQueue.Services;
-using TaskQueue.Models;
 
 namespace TaskQueue.Controllers
 {

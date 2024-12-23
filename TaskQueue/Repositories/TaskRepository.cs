@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Shared.Models;
 using TaskQueue.Database;
-using TaskQueue.Models;
 
 namespace TaskQueue.Repositories
 {
