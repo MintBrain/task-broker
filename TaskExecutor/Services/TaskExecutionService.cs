@@ -1,71 +1,58 @@
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using System.Text.Json;
-using System.Threading;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+using System;
+using System.Text;
 using System.Threading.Tasks;
-using TaskExecutor.Models;
-using Shared.Models;
-using Shared.Services; // Убедитесь, что путь соответствует вашему проекту
 
 namespace TaskExecutor.Services
 {
-    public class TaskExecutionService : BackgroundService
+    public class TaskExecutor
     {
-        private readonly ILogger<TaskExecutionService> _logger;
-        private readonly DatabaseServiceClient _databaseServiceClient;
+        private readonly TaskProcessor _taskProcessor;
+        private readonly string _rabbitMqHost;
+        private readonly string _queueName = "TaskQueue";
 
-        public TaskExecutionService(ILogger<TaskExecutionService> logger, DatabaseServiceClient databaseServiceClient)
+        public TaskExecutor(TaskProcessor taskProcessor, string rabbitMqHost)
         {
-            _logger = logger;
-            _databaseServiceClient = databaseServiceClient;
+            _taskProcessor = taskProcessor;
+            _rabbitMqHost = rabbitMqHost;
         }
 
-        protected override Task ExecuteAsync(CancellationToken stoppingToken)
+        public void Start()
         {
-            // Запускаем прослушивание очереди задач из TaskQueue
-            Task.Run(async () =>
+            var factory = new ConnectionFactory { HostName = _rabbitMqHost };
+            using var connection = factory.CreateConnection();
+            using var channel = connection.CreateModel();
+
+            channel.QueueDeclare(queue: _queueName,
+                                 durable: false,
+                                 exclusive: false,
+                                 autoDelete: false,
+                                 arguments: null);
+
+            Console.WriteLine($"Listening on queue '{_queueName}'...");
+
+            var consumer = new EventingBasicConsumer(channel);
+            consumer.Received += async (model, ea) =>
             {
-                while (!stoppingToken.IsCancellationRequested)
-                {
-                    // Получение задачи из TaskQueue
-                    // var taskItem = await _databaseServiceClient.GetNextTaskAsync(); // Метод получения следующей задачи
-                    //
-                    // if (taskItem != null)
-                    // {
-                    //     await ProcessTask(taskItem);
-                    // }
+                var body = ea.Body.ToArray();
+                var message = Encoding.UTF8.GetString(body);
 
-                    // Задержка для предотвращения избыточной загрузки
-                    await Task.Delay(1000, stoppingToken);
-                }
-            }, stoppingToken);
+                Console.WriteLine($"Received task: {message}");
 
-            return Task.CompletedTask;
-        }
+                // Обработка задачи
+                var result = await _taskProcessor.ProcessAsync(message);
 
-        private async Task ProcessTask(TaskModel taskItem)
-        {
-            try
-            {
-                _logger.LogInformation($"Processing task {taskItem.Id}: {taskItem.Description}");
+                // Вывод результата
+                Console.WriteLine($"Processed task: {result}");
+            };
 
-                // Здесь добавьте вашу логику выполнения задачи
+            channel.BasicConsume(queue: _queueName,
+                                 autoAck: true,
+                                 consumer: consumer);
 
-                // Сохранение результата в БД через DatabaseServiceClient
-                var taskResult = new TaskResult
-                {
-                    TaskId = taskItem.Id,
-                    Result = "Task completed successfully", // Здесь можно добавить результат выполнения задачи
-                    CompletedAt = DateTime.UtcNow
-                };
-
-                await _databaseServiceClient.SaveTaskResultAsync(taskResult); // Метод для сохранения результата
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing task {TaskId}", taskItem.Id);
-                // Обработка ошибки, если нужно
-            }
+            Console.WriteLine("Press [enter] to exit.");
+            Console.ReadLine();
         }
     }
 }
