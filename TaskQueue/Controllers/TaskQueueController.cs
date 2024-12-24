@@ -158,9 +158,16 @@ namespace TaskQueue.Controllers
         [SwaggerOperation(Summary = "Получить метрики TaskQueue")]
         public IActionResult GetMetrics()
         {
-            // Пример функции для получения метрик
-            // Здесь должна быть логика для извлечения метрик
-            return Ok("Метрики"); // Возвращаем метрики
+            try
+            {
+                var metrics = _taskQueueService.GetMetrics();
+                return Ok(metrics);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e); // TODO: Store in Log
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
         }
     }
 }
