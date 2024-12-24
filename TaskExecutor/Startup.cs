@@ -1,33 +1,25 @@
-using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using TaskExecutor.Services;
 
 namespace TaskExecutor
 {
-    public class Startup
+    public class Startup(IConfiguration configuration)
     {
+        public IConfiguration Configuration { get; } = configuration;
+
         public void ConfigureServices(IServiceCollection services)
         {
-            // Регистрация зависимостей
+            services.AddSingleton<IRabbitMqService, RabbitMqService>();
+            
             services.AddSingleton<TaskProcessor>();
-            services.AddSingleton(provider =>
-            {
-                var taskProcessor = provider.GetRequiredService<TaskProcessor>();
-                var rabbitMqHost = "localhost"; // Укажите хост RabbitMQ
-                return new TaskExecutor.Services.TaskExecutor(taskProcessor, rabbitMqHost);
-            });
-        }
 
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, TaskExecutor.Services.TaskExecutor taskExecutor)
-        {
-            if (env.IsDevelopment())
-            {
-                app.UseDeveloperExceptionPage();
-            }
+            // Register TaskExecutor
+            services.AddSingleton<TaskExecutionService>();
 
-            // Запуск TaskExecutor при старте
-            taskExecutor.Start();
+            // Register Hosted Service for lifecycle management
+            services.AddHostedService<Worker>();
+            services.AddSingleton(Configuration);
         }
     }
 }
