@@ -4,6 +4,9 @@ using System.Text;
 using ApiGateway.Services;
 using Prometheus;
 using Microsoft.OpenApi.Models;
+using Microsoft.Extensions.Options;
+using ApiGateway.Common;
+using Serilog;
 
 public class Startup
 {
@@ -85,20 +88,20 @@ public class Startup
         {
             app.UseDeveloperExceptionPage();
         }
-
+        app.UseMiddleware<PrometheusMiddleware>();
         // Принудительное использование HTTPS
         // app.UseHttpsRedirection();
 
         // Настройка аутентификации
         app.UseAuthentication();
-
         app.UseRouting();
+        app.UseSerilogRequestLogging();
 
         // Настройка авторизации
         app.UseAuthorization();
 
         // Добавление метрик Prometheus
-        app.UseHttpMetrics(); // Автоматический сбор HTTP метрик
+        app.UseHttpMetrics(options => options.ReduceStatusCodeCardinality()); // Автоматический сбор HTTP метрик
         app.UseMetricServer(); // Открывает эндпоинт `/metrics` для Prometheus
 
         app.UseEndpoints(endpoints =>
@@ -106,7 +109,6 @@ public class Startup
             endpoints.MapControllers();
             endpoints.MapMetrics(); // Добавление метрик к маршрутам
         });
-
         app.UseSwagger();
         app.UseSwaggerUI();
     }

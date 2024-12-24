@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
+using Serilog;
 
 namespace ApiGateway
 {
@@ -24,6 +25,7 @@ namespace ApiGateway
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder.UseStartup<Startup>();
-                });
+                })
+            .UseSerilog((ctx, cfg) => cfg.ReadFrom.Configuration(ctx.Configuration));
     }
 }
