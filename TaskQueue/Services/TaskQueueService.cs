@@ -1,11 +1,7 @@
 using System.Text;
 using RabbitMQ.Client;
 using Newtonsoft.Json;
-using Microsoft.EntityFrameworkCore;
-using TaskQueue.Models;
-using TaskQueue.Database;
 using TaskQueue.Dto;
-using Shared.Enums;
 using Shared.Models;
 using TaskQueue.Repositories;
 using TaskStatus = Shared.Enums.TaskStatus;
@@ -40,18 +36,21 @@ namespace TaskQueue.Services
             {
                 try
                 {
-                    var task = JsonConvert.DeserializeObject<TaskItem>(message);
+                    var task = JsonConvert.DeserializeObject<TaskResult>(message);
                     if (task == null) return;
 
-                    Console.WriteLine($"Received result for task {task.Id}");
+                    Console.WriteLine($"Received result for task {task.TaskId}: message: {message}");
 
+                    using var scope = _serviceScopeFactory.CreateScope();
+                    var taskRepository = scope.ServiceProvider.GetRequiredService<TaskRepository>();
+                    
                     // Update the task in the database
-                    var existingTask = await _taskRepository.GetTaskByIdAsync(task.Id);
+                    var existingTask = await taskRepository.GetTaskByIdAsync(task.TaskId);
                     if (existingTask != null)
                     {
                         existingTask.Status = task.Status;
                         existingTask.Result = task.Result;
-                        await _taskRepository.UpdateTaskAsync(existingTask);
+                        await taskRepository.UpdateTaskAsync(existingTask);
                     }
                 }
                 catch (Exception ex)
