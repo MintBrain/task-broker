@@ -18,14 +18,15 @@ namespace TaskQueue.Services
         private readonly IRabbitMqService _rabbitMqService;
         private readonly TaskRepository _taskRepository;
         private readonly IServiceScopeFactory _serviceScopeFactory;
-        
-        public TaskQueueService(IRabbitMqService rabbitMqService, TaskRepository taskRepository, IServiceScopeFactory serviceScopeFactory)
+
+        public TaskQueueService(IRabbitMqService rabbitMqService, TaskRepository taskRepository,
+            IServiceScopeFactory serviceScopeFactory)
         {
             _rabbitMqService = rabbitMqService;
             _taskRepository = taskRepository;
             _serviceScopeFactory = serviceScopeFactory;
         }
-        
+
         public async Task StartListening()
         {
             // Subscribe to taskQueue
@@ -35,6 +36,30 @@ namespace TaskQueue.Services
             //     // Process the task and handle the message
             // });
 
+            await _rabbitMqService.SubscribeToQueueAsync("resultQueue", async message =>
+            {
+                try
+                {
+                    var task = JsonConvert.DeserializeObject<TaskItem>(message);
+                    if (task == null) return;
+
+                    Console.WriteLine($"Received result for task {task.Id}");
+
+                    // Update the task in the database
+                    var existingTask = await _taskRepository.GetTaskByIdAsync(task.Id);
+                    if (existingTask != null)
+                    {
+                        existingTask.Status = task.Status;
+                        existingTask.Result = task.Result;
+                        await _taskRepository.UpdateTaskAsync(existingTask);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error handling result: {ex.Message}");
+                }
+            });
+
             // Subscribe to dlq (Dead Letter Queue)
             await _rabbitMqService.SubscribeToQueueAsync("dlq", async message =>
             {
@@ -42,7 +67,7 @@ namespace TaskQueue.Services
                 {
                     using var scope = _serviceScopeFactory.CreateScope();
                     var taskRepository = scope.ServiceProvider.GetRequiredService<TaskRepository>();
-                    
+
                     Console.WriteLine($"Dead-lettered message: {message}");
                     var task = JsonConvert.DeserializeObject<TaskItem>(message);
                     if (task == null)
@@ -65,41 +90,37 @@ namespace TaskQueue.Services
                 Type = task.Type,
                 Data = task.Data,
                 Ttl = task.Ttl,
-                Status = TaskStatus.New,
+                Status = TaskStatus.Pending,
                 Result = ""
             };
 
             _task.Id = (await _taskRepository.AddTaskAsync(_task)).Id;
-            
-            var message = JsonConvert.SerializeObject(_task);
-            var body = Encoding.UTF8.GetBytes(message);
-            var ch = await _rabbitMqService.GetChannelAsync();
-            var properties = new BasicProperties
-            {
-                Expiration = (task.Ttl).ToString(),
-            };
-            
-            await ch.BasicPublishAsync(
-                exchange: string.Empty, 
-                routingKey: "taskQueue",
-                mandatory: true,
-                basicProperties: properties,
-                body: body);
-            
+
+            await PublishTask(_task);
+
             return _task.Id;
         }
 
         public async Task RestartTask(int id)
         {
-            // TODO: Store `Restarting` status to DB
-            // TODO: Abandon task on rabbitQueue? to drop it in TaskExecutor
-            // TODO: Store `RestartFailed` or `RestartSuccess`, get this info from `TaskExecutor` via RabbitMQ
+            var task = await _taskRepository.GetTaskByIdAsync(id);
+            if (task == null)
+                throw new KeyNotFoundException();
+
+            if (task.Status is TaskStatus.Pending or TaskStatus.InProgress)
+            {
+                throw new InvalidOperationException($"Task {id} has already been started");
+            }
+
+            task.Status = TaskStatus.Pending;
+            await _taskRepository.UpdateTaskAsync(task);
+            await PublishTask(task);
         }
-        
+
         public async Task<TaskItem> GetTaskById(int id)
         {
             var task = await _taskRepository.GetTaskByIdAsync(id);
-            
+
             if (task == null)
                 throw new KeyNotFoundException();
             return task;
@@ -113,8 +134,8 @@ namespace TaskQueue.Services
                 throw new KeyNotFoundException("Task not found");
 
             return new TaskResult(); // TODO: `TaskResult` может быть не нужен,
-                                     // можем возвращать весь TaskItem,
-                                     // зависит от того, хранятся ли результаты отдельно в БД
+            // можем возвращать весь TaskItem,
+            // зависит от того, хранятся ли результаты отдельно в БД
         }
 
         public async Task<List<TaskItem>> GetAllTasks()
@@ -122,7 +143,7 @@ namespace TaskQueue.Services
             var tasks = await _taskRepository.GetAllTasksAsync();
             return tasks;
         }
-        
+
         public async Task<TaskStatus> GetTaskStatus(int id)
         {
             var task = await _taskRepository.GetTaskByIdAsync(id);
@@ -130,7 +151,7 @@ namespace TaskQueue.Services
                 throw new KeyNotFoundException("Task not found");
             return task.Status;
         }
-        
+
         public object GetMetrics()
         {
             // TODO: Return Metrics:
@@ -138,8 +159,26 @@ namespace TaskQueue.Services
             // - Количество задач по статусам
             // - Время ожидания выполнения задач (среднее?)
             // - Количество текущих задач в очереди
-            
+
             return new { }; // Пример возврата метрик
+        }
+
+        private async Task PublishTask(TaskItem task)
+        {
+            var message = JsonConvert.SerializeObject(task);
+            var body = Encoding.UTF8.GetBytes(message);
+            var ch = await _rabbitMqService.GetChannelAsync();
+            var properties = new BasicProperties
+            {
+                Expiration = (task.Ttl).ToString(),
+            };
+
+            await ch.BasicPublishAsync(
+                exchange: string.Empty,
+                routingKey: "taskQueue",
+                mandatory: true,
+                basicProperties: properties,
+                body: body);
         }
     }
 }

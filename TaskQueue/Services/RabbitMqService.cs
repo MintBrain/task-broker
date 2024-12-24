@@ -90,11 +90,11 @@ namespace TaskQueue.Services
             {
                 var body = e.Body.ToArray();
                 var message = Encoding.UTF8.GetString(body);
-
-                await messageHandler(message);  // Handle the received message
-
+                
                 // Acknowledge the message after processing
                 await channel.BasicAckAsync(e.DeliveryTag, false);
+
+                await messageHandler(message);  // Handle the received message
             };
 
             // Start consuming the messages from the queue

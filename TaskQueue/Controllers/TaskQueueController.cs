@@ -63,7 +63,15 @@ namespace TaskQueue.Controllers
                 await _taskQueueService.RestartTask(id);
                 return Ok($"Задача {id} перезапущена");
             }
-            catch (Exception e) // TODO: Handle exception for wrong ID 
+            catch (KeyNotFoundException e)
+            {
+                return NotFound($"Task {id} not found");
+            }
+            catch (InvalidOperationException e)
+            {
+                return BadRequest($"Task {id} has already been started");
+            }
+            catch (Exception e)
             {
                 Console.WriteLine(e); // TODO: Store in Log
                 return StatusCode(StatusCodes.Status500InternalServerError); 
@@ -83,7 +91,7 @@ namespace TaskQueue.Controllers
             {
                 return NotFound($"Task {id} not found");
             }
-            catch (Exception e) // TODO: Handle exception for wrong ID 
+            catch (Exception e)
             {
                 Console.WriteLine(e); // TODO: Store in Log
                 return StatusCode(StatusCodes.Status500InternalServerError);
@@ -134,6 +142,10 @@ namespace TaskQueue.Controllers
             {
                 var taskStatus = await _taskQueueService.GetTaskStatus(id);
                 return Ok(taskStatus);
+            }
+            catch (KeyNotFoundException e)
+            {
+                return NotFound($"Task {id} not found");
             }
             catch (Exception e)
             {
