@@ -1,6 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Shared.Models;
-using TaskQueue.Models;
 
 namespace TaskQueue.Database
 {

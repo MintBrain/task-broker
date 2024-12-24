@@ -1,4 +1,4 @@
-namespace DefaultNamespace;
+namespace Shared;
 
 public class Shared
 {
