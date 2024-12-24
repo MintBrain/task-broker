@@ -15,13 +15,15 @@ namespace TaskQueue.Repositories
             _dbContext = dbContext;
         }
 
-        public async Task AddTaskAsync(TaskItem task)
+        public async Task<TaskItem> AddTaskAsync(TaskItem task)
         {
-            await _dbContext.Tasks.AddAsync(task);
+            
+            var _task = await _dbContext.Tasks.AddAsync(task);
             await _dbContext.SaveChangesAsync();
+            return _task.Entity;
         }
 
-        public async Task<TaskItem> GetTaskByIdAsync(int id)
+        public async Task<TaskItem?> GetTaskByIdAsync(int id)
         {
             return await _dbContext.Tasks.FindAsync(id);
         }
@@ -33,7 +35,17 @@ namespace TaskQueue.Repositories
 
         public async Task UpdateTaskAsync(TaskItem task)
         {
-            _dbContext.Tasks.Update(task);
+            // Ensure the entity is being tracked by the context
+            var existingTask = await _dbContext.Tasks.FindAsync(task.Id);
+            if (existingTask == null)
+            {
+                throw new KeyNotFoundException($"Task with ID {task.Id} not found.");
+            }
+
+            // Update the properties of the existing entity
+            _dbContext.Entry(existingTask).CurrentValues.SetValues(task);
+
+            // Save changes to the database
             await _dbContext.SaveChangesAsync();
         }
 

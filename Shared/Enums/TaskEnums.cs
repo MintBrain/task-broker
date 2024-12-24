@@ -14,6 +14,7 @@ namespace Shared.Enums
         Pending = 1,
         InProgress = 2,
         Completed = 3,
-        Failed = 4
+        Failed = 4,
+        Expired = 5
     }
 }

@@ -7,5 +7,7 @@ namespace TaskQueue.Services
         Task<IChannel> GetChannelAsync();
         
         Task SubscribeToQueueAsync(string queueName, Func<string, Task> messageHandler);
+
+        ValueTask DisposeAsync();
     }
 }

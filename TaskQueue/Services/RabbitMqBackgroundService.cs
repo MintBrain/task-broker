@@ -14,13 +14,20 @@ public class RabbitMqBackgroundService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         // Create a scope to resolve the scoped service
-        using (var scope = _serviceScopeFactory.CreateScope())
-        {
-            var taskQueueService = scope.ServiceProvider.GetRequiredService<TaskQueueService>();
+        using var scope = _serviceScopeFactory.CreateScope();
+        var taskQueueService = scope.ServiceProvider.GetRequiredService<TaskQueueService>();
 
-            // Declare queues and start listening
-            await _rabbitMqService.GetChannelAsync();
-            await taskQueueService.StartListening();
-        }
+        // Declare queues and start listening
+        await _rabbitMqService.GetChannelAsync();
+        await taskQueueService.StartListening();
+    }
+    
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        // Ensure that no tasks are still using RabbitMqService
+        await base.StopAsync(cancellationToken);
+
+        // Safely dispose RabbitMqService
+        await _rabbitMqService.DisposeAsync();
     }
 }

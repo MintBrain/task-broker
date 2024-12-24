@@ -7,6 +7,7 @@ using TaskQueue.Database;
 using TaskQueue.Dto;
 using Shared.Enums;
 using Shared.Models;
+using TaskQueue.Repositories;
 using TaskStatus = Shared.Enums.TaskStatus;
 
 
@@ -15,12 +16,14 @@ namespace TaskQueue.Services
     public class TaskQueueService
     {
         private readonly IRabbitMqService _rabbitMqService;
-        private readonly AppDbContext _appDbContextContext;
+        private readonly TaskRepository _taskRepository;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
         
-        public TaskQueueService(IRabbitMqService rabbitMqService, AppDbContext appDbContextContext)
+        public TaskQueueService(IRabbitMqService rabbitMqService, TaskRepository taskRepository, IServiceScopeFactory serviceScopeFactory)
         {
             _rabbitMqService = rabbitMqService;
-            _appDbContextContext = appDbContextContext;
+            _taskRepository = taskRepository;
+            _serviceScopeFactory = serviceScopeFactory;
         }
         
         public async Task StartListening()
@@ -35,8 +38,23 @@ namespace TaskQueue.Services
             // Subscribe to dlq (Dead Letter Queue)
             await _rabbitMqService.SubscribeToQueueAsync("dlq", async message =>
             {
-                Console.WriteLine($"Dead-lettered message: {message}");
-                // Handle dead-lettered message
+                try
+                {
+                    using var scope = _serviceScopeFactory.CreateScope();
+                    var taskRepository = scope.ServiceProvider.GetRequiredService<TaskRepository>();
+                    
+                    Console.WriteLine($"Dead-lettered message: {message}");
+                    var task = JsonConvert.DeserializeObject<TaskItem>(message);
+                    if (task == null)
+                        return;
+
+                    task.Status = TaskStatus.Expired;
+                    await taskRepository.UpdateTaskAsync(task);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
             });
         }
 
@@ -50,9 +68,8 @@ namespace TaskQueue.Services
                 Status = TaskStatus.New,
                 Result = ""
             };
-            
-            _task.Id = _appDbContextContext.Tasks.Add(_task).Entity.Id;  // TODO: Мы должны получать ID из БД
-            await _appDbContextContext.SaveChangesAsync();
+
+            _task.Id = (await _taskRepository.AddTaskAsync(_task)).Id;
             
             var message = JsonConvert.SerializeObject(_task);
             var body = Encoding.UTF8.GetBytes(message);
@@ -81,7 +98,8 @@ namespace TaskQueue.Services
         
         public async Task<TaskItem> GetTaskById(int id)
         {
-            var task = await _appDbContextContext.Tasks.FindAsync(id);
+            var task = await _taskRepository.GetTaskByIdAsync(id);
+            
             if (task == null)
                 throw new KeyNotFoundException();
             return task;
@@ -89,11 +107,11 @@ namespace TaskQueue.Services
 
         public async Task<TaskResult> GetTaskResultById(int id)
         {
-            var task = await _appDbContextContext.Tasks.FindAsync(id);
+            var task = await _taskRepository.GetTaskByIdAsync(id);
+
             if (task == null)
                 throw new KeyNotFoundException("Task not found");
 
-            await _appDbContextContext.SaveChangesAsync();
             return new TaskResult(); // TODO: `TaskResult` может быть не нужен,
                                      // можем возвращать весь TaskItem,
                                      // зависит от того, хранятся ли результаты отдельно в БД
@@ -101,15 +119,15 @@ namespace TaskQueue.Services
 
         public async Task<List<TaskItem>> GetAllTasks()
         {
-            var tasks = await _appDbContextContext.Tasks.ToListAsync();
+            var tasks = await _taskRepository.GetAllTasksAsync();
             return tasks;
         }
         
         public async Task<TaskStatus> GetTaskStatus(int id)
         {
-            var task = await _appDbContextContext.Tasks.FindAsync(id);
+            var task = await _taskRepository.GetTaskByIdAsync(id);
             if (task == null)
-                throw new KeyNotFoundException();
+                throw new KeyNotFoundException("Task not found");
             return task.Status;
         }
         

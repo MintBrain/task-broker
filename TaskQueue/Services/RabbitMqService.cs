@@ -4,7 +4,7 @@ using RabbitMQ.Client.Events;
 
 namespace TaskQueue.Services
 {
-    public class RabbitMqService : IRabbitMqService
+    public class RabbitMqService : IRabbitMqService, IAsyncDisposable
     {
         private readonly ConnectionFactory _connectionFactory;
         private IConnection? _connection;
@@ -103,6 +103,23 @@ namespace TaskQueue.Services
                 autoAck: false, // Set to true for auto-acknowledgment or false for manual
                 consumer: consumer
             );
+        }
+        
+        public async ValueTask DisposeAsync()
+        {
+            if (_channel != null && _channel.IsOpen)
+            {
+                await _channel.CloseAsync();
+                _channel.Dispose();
+                _channel = null;
+            }
+
+            if (_connection != null && _connection.IsOpen)
+            {
+                await _connection.CloseAsync();
+                _connection.Dispose();
+                _connection = null;
+            }
         }
     }
 }
