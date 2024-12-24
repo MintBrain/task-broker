@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   apigateway:
-    image: rabbitFactory/apigateway:latest
+    image: apigateway:latest
     build:
       context: ./ApiGateway
       dockerfile: Dockerfile
@@ -10,12 +10,12 @@ services:
       - "5000:80" # Проброс порта для ApiGateway
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - TaskQueue__BaseUrl=http://taskqueue:80 # URL для TaskQueue
+      - TaskQueue__BaseUrl=http://taskqueue:5001 # URL для TaskQueue
     depends_on:
       - taskqueue
 
   taskqueue:
-    image: rabbitFactory/taskqueue:latest
+    image: taskqueue:latest
     build:
       context: ./
       dockerfile: ./TaskQueue/Dockerfile
@@ -26,9 +26,11 @@ services:
       - ConnectionStrings__DefaultConnection=Host=db;Database=taskqueue;Username=postgres;Password=yourpassword
       - RabbitMQ__Host=rabbitmq
       - RabbitMQ__QueueName=taskqueue
+      - RabbitMQ__Username=user
+      - RabbitMQ__Password=password
 
   taskexecutor:
-    image: rabbitFactory/taskexecutor:latest
+    image: taskexecutor:latest
     build:
       context: ./
       dockerfile: ./TaskExecutor/Dockerfile
@@ -36,6 +38,8 @@ services:
       - DOTNET_ENVIRONMENT=Development
       - RabbitMQ__Host=rabbitmq
       - RabbitMQ__QueueName=taskqueue
+      - RabbitMQ__Username=user
+      - RabbitMQ__Password=password
 
   rabbitmq:
     image: rabbitmq:management
@@ -63,7 +67,10 @@ services:
     ports:
       - "9090:9090" # Проброс порта для Prometheus
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml # Конфигурационный файл Prometheus
+      - type: bind
+        source: /c/git/task-broker/prometheus.yml
+        target: /etc/prometheus/prometheus.yml
+        read_only: true
     depends_on:
       - apigateway
       - taskqueue
@@ -72,7 +79,7 @@ services:
     image: grafana/grafana:latest
     container_name: grafana
     ports:
-      - "3000:3000" # Проброс порта для Grafana
+      - "3030:3000" # Проброс порта для Grafana
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
