@@ -1,58 +1,99 @@
-using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
-using System;
+using System.Globalization;
 using System.Text;
-using System.Threading.Tasks;
+using Newtonsoft.Json;
+using RabbitMQ.Client;
+using Shared.Models;
+using TaskStatus = Shared.Enums.TaskStatus;
 
 namespace TaskExecutor.Services
 {
-    public class TaskExecutor
+    public class TaskExecutionService
     {
         private readonly TaskProcessor _taskProcessor;
-        private readonly string _rabbitMqHost;
-        private readonly string _queueName = "TaskQueue";
+        private readonly IRabbitMqService _rabbitMqService;
 
-        public TaskExecutor(TaskProcessor taskProcessor, string rabbitMqHost)
+        private const string _taskQueue = "taskQueue";
+        private const string _resultQueue = "resultQueue";
+
+        public TaskExecutionService(TaskProcessor taskProcessor, IRabbitMqService rabbitMqService)
         {
             _taskProcessor = taskProcessor;
-            _rabbitMqHost = rabbitMqHost;
+            _rabbitMqService = rabbitMqService;
         }
 
-        public void Start()
+        public async Task StartAsync()
         {
-            var factory = new ConnectionFactory { HostName = _rabbitMqHost };
-            using var connection = factory.CreateConnection();
-            using var channel = connection.CreateModel();
-
-            channel.QueueDeclare(queue: _queueName,
-                                 durable: false,
-                                 exclusive: false,
-                                 autoDelete: false,
-                                 arguments: null);
-
-            Console.WriteLine($"Listening on queue '{_queueName}'...");
-
-            var consumer = new EventingBasicConsumer(channel);
-            consumer.Received += async (model, ea) =>
+            // Ensure task and result queues are declared
+            var channel = await _rabbitMqService.GetChannelAsync();
+            
+            // Subscribe to the task queue
+            await _rabbitMqService.SubscribeToQueueAsync(_taskQueue, async message =>
             {
-                var body = ea.Body.ToArray();
-                var message = Encoding.UTF8.GetString(body);
+                var taskItem = JsonConvert.DeserializeObject<TaskItem>(message);
 
-                Console.WriteLine($"Received task: {message}");
+                if (taskItem != null)
+                {
+                    Console.WriteLine($"Received task: {taskItem.Id}");
+                    await ProcessTaskAsync(taskItem);
+                }
+            });
 
-                // Обработка задачи
-                var result = await _taskProcessor.ProcessAsync(message);
+            Console.WriteLine("TaskExecutionService is running...");
+        }
 
-                // Вывод результата
-                Console.WriteLine($"Processed task: {result}");
-            };
+        private async Task ProcessTaskAsync(TaskItem taskItem)
+        {
+            var cts = new CancellationTokenSource(taskItem.Ttl);
 
-            channel.BasicConsume(queue: _queueName,
-                                 autoAck: true,
-                                 consumer: consumer);
+            try
+            {
+                // Execute task with a timeout
+                double result = await _taskProcessor.ProcessAsync(taskItem, cts.Token);
 
-            Console.WriteLine("Press [enter] to exit.");
-            Console.ReadLine();
+                // Publish the result to the result queue
+                await PublishResultAsync(new TaskResult
+                {
+                    TaskId = taskItem.Id,
+                    Status = TaskStatus.Completed,
+                    Result = result.ToString("#0.##", CultureInfo.InvariantCulture)
+                });
+            }
+            catch (OperationCanceledException)
+            {
+                // Handle TTL expiration
+                await PublishResultAsync(new TaskResult
+                {
+                    TaskId = taskItem.Id,
+                    Status = TaskStatus.Expired,
+                    Result = "Task expired."
+                });
+            }
+            catch (Exception ex)
+            {
+                // Handle task failure
+                await PublishResultAsync(new TaskResult
+                {
+                    TaskId = taskItem.Id,
+                    Status = TaskStatus.Failed,
+                    Result = $"Error: {ex.Message}"
+                });
+            }
+        }
+
+        private async Task PublishResultAsync(TaskResult taskResult)
+        {
+            var resultMessage = JsonConvert.SerializeObject(taskResult);
+            var body = Encoding.UTF8.GetBytes(resultMessage);
+
+            var channel = await _rabbitMqService.GetChannelAsync();
+
+            await channel.BasicPublishAsync(
+                exchange: string.Empty,
+                routingKey: _resultQueue,
+                body: body
+            );
+
+            Console.WriteLine($"Result published for Task {taskResult.TaskId}: {taskResult.Status}");
         }
     }
 }
