@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   apigateway:
-    image: yourusername/apigateway:latest
+    image: rabbitFactory/apigateway:latest
     build:
       context: ./ApiGateway
       dockerfile: Dockerfile
@@ -15,7 +15,7 @@ services:
       - taskqueue
 
   taskqueue:
-    image: yourusername/taskqueue:latest
+    image: rabbitFactory/taskqueue:latest
     build:
       context: ./
       dockerfile: ./TaskQueue/Dockerfile
@@ -27,15 +27,15 @@ services:
       - RabbitMQ__Host=rabbitmq
       - RabbitMQ__QueueName=taskqueue
 
-#  taskexecutor:
-#    image: yourusername/taskexecutor:latest
-#    build:
-#      context: ./TaskExecutor
-#      dockerfile: Dockerfile
-#    environment:
-#      - ASPNETCORE_ENVIRONMENT=Development
-#      - RabbitMQ__Host=rabbitmq
-#      - RabbitMQ__QueueName=taskqueue
+  taskexecutor:
+    image: rabbitFactory/taskexecutor:latest
+    build:
+      context: ./
+      dockerfile: ./TaskExecutor/Dockerfile
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__QueueName=taskqueue
 
   rabbitmq:
     image: rabbitmq:management
