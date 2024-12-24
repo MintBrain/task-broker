@@ -132,9 +132,13 @@ namespace TaskQueue.Services
             if (task == null)
                 throw new KeyNotFoundException("Task not found");
 
-            return new TaskResult(); // TODO: `TaskResult` может быть не нужен,
-            // можем возвращать весь TaskItem,
-            // зависит от того, хранятся ли результаты отдельно в БД
+            return new TaskResult
+            {
+                Id = 0,
+                TaskId = task.Id,
+                Status = task.Status,
+                Result = task.Result,
+            };
         }
 
         public async Task<List<TaskItem>> GetAllTasks()

@@ -78,9 +78,9 @@ namespace TaskQueue.Controllers
             }
         }
 
-        [HttpGet("result")]
+        [HttpGet("result/{id:int}")]
         [SwaggerOperation(Summary = "Получить результат выполнения задачи")]
-        public async Task<IActionResult> SendTaskResult([FromBody] int id)
+        public async Task<IActionResult> SendTaskResult(int id)
         {
             try
             {

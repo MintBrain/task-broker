@@ -23,18 +23,26 @@ namespace TaskQueue.Services
 
         public async Task<IChannel> GetChannelAsync()
         {
-            if (_connection == null || !_connection.IsOpen)
+            try
             {
-                _connection = await _connectionFactory.CreateConnectionAsync();
-            }
+                if (_connection == null || !_connection.IsOpen)
+                {
+                    _connection = await _connectionFactory.CreateConnectionAsync();
+                }
 
-            if (_channel == null || !_channel.IsOpen)
+                if (_channel == null || !_channel.IsOpen)
+                {
+                    _channel = await _connection.CreateChannelAsync();
+                    await DeclareQueueAsync(_channel);
+                }
+
+                return _channel;
+            }
+            catch (Exception ex) // TODO: Retry every 5 sec. to connect
             {
-                _channel = await _connection.CreateChannelAsync();
-                await DeclareQueueAsync(_channel);
+                Console.WriteLine(ex.Message);
+                throw new Exception();
             }
-
-            return _channel;
         }
         
         private static async Task DeclareQueueAsync(IChannel channel)

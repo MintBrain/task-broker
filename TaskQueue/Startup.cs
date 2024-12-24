@@ -15,6 +15,7 @@ namespace TaskQueue
         
         public void ConfigureServices(IServiceCollection services)
         {
+            // PrintConfigurationSection(Configuration);
             // Использование строки подключения к базе данных
             // Подключение к PostgreSQL
             var connectionString = Configuration.GetConnectionString("DefaultConnection");
@@ -65,6 +66,25 @@ namespace TaskQueue
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "TaskQueue API V1");
                 c.RoutePrefix = string.Empty;
             });
+        }
+        
+        private void PrintConfigurationSection(IConfiguration configuration, string parentKey = "")
+        {
+            foreach (var child in configuration.GetChildren())
+            {
+                var key = string.IsNullOrEmpty(parentKey) ? child.Key : $"{parentKey}:{child.Key}";
+
+                if (child.GetChildren().Any()) // If there are nested sections
+                {
+                    // Recursively print nested sections
+                    PrintConfigurationSection(child, key);
+                }
+                else
+                {
+                    // Print the key and its value to the console
+                    Console.WriteLine($"Config: {key} = {child.Value}");
+                }
+            }
         }
     }
 }
