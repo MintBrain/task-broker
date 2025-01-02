@@ -1,5 +1,7 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Shared.Enums;
 using Shared.Models;
 
@@ -7,50 +9,54 @@ namespace TaskExecutor
 {
     public class TaskProcessor
     {
+        private readonly ILogger<TaskProcessor> _logger;
+
+        public TaskProcessor(ILogger<TaskProcessor> logger)
+        {
+            _logger = logger;
+        }
+
         public async Task<double> ProcessAsync(TaskItem task, CancellationToken cancellationToken)
         {
-            Console.WriteLine($"Processing Task {task.Id}...");
+            _logger.LogInformation("Processing Task {TaskId} of type {TaskType}...", task.Id, task.Type);
 
             try
             {
-                // Perform calculation
+                // Выполнение вычислений
                 var result = Calculate(task.Type, task.Data);
 
-                // Simulate workload with a random delay based on TTL
+                // Имитация задержки выполнения
                 var random = new Random();
-                var minDelay = Math.Max(10, task.Ttl * 0.1); // Minimum delay of 10ms or 10% of TTL
-                var maxDelay = task.Ttl * 1.1; // Maximum delay of 110% of TTL
+                var minDelay = Math.Max(10, task.Ttl * 0.1); // Минимальная задержка
+                var maxDelay = task.Ttl * 1.1; // Максимальная задержка
 
-                // Generate a random delay within the range [minDelay, maxDelay]
                 var simulatedDelay = random.NextDouble() * (maxDelay - minDelay) + minDelay;
-
                 var totalDelay = TimeSpan.FromMilliseconds(simulatedDelay);
+
+                _logger.LogDebug("Task {TaskId} will simulate workload for {Delay} ms", task.Id, totalDelay.TotalMilliseconds);
 
                 var startTime = DateTime.UtcNow;
 
                 while (DateTime.UtcNow - startTime < totalDelay)
                 {
-                    cancellationToken.ThrowIfCancellationRequested(); // Check for cancellation
-
-                    // Simulate a small workload during the delay (this can be adjusted for granularity)
-                    await Task.Delay(10, cancellationToken); // Delay for 10ms, adjust as needed
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await Task.Delay(10, cancellationToken); // Малые задержки для проверки отмены
                 }
 
-                Console.WriteLine($"Task {task.Id} completed with result: {result}");
+                _logger.LogInformation("Task {TaskId} completed successfully with result: {Result}", task.Id, result);
                 return result;
             }
             catch (OperationCanceledException)
             {
-                Console.WriteLine($"Task {task.Id} was canceled.");
-                throw; // Allow the caller to handle cancellation
+                _logger.LogWarning("Task {TaskId} was canceled.", task.Id);
+                throw;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error processing Task {task.Id}: {ex.Message}");
-                throw; // Rethrow the exception for higher-level handling
+                _logger.LogError(ex, "Error processing Task {TaskId}: {ErrorMessage}", task.Id, ex.Message);
+                throw;
             }
         }
-
 
         private static double Calculate(TaskType taskType, string data)
         {
