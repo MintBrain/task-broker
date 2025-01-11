@@ -24,18 +24,38 @@ namespace TaskExecutor.Services
 
         public async Task<IChannel> GetChannelAsync()
         {
-            if (_connection == null || !_connection.IsOpen)
+            const int retryIntervalInMilliseconds = 5000; // Retry every 5 seconds
+            
+            while (true)
             {
-                _connection = await _connectionFactory.CreateConnectionAsync();
-            }
+                try
+                {
+                    if (_connection == null || !_connection.IsOpen)
+                    {
+                        Console.WriteLine("Attempting to connect to RabbitMQ...");
+                        _connection = await _connectionFactory.CreateConnectionAsync();
+                        Console.WriteLine("RabbitMQ connection established.");
+                    }
 
-            if (_channel == null || !_channel.IsOpen)
-            {
-                _channel = await _connection.CreateChannelAsync();
-                await DeclareQueueAsync(_channel);
-            }
+                    if (_channel == null || !_channel.IsOpen)
+                    {
+                        Console.WriteLine("Creating RabbitMQ channel...");
+                        _channel = await _connection.CreateChannelAsync();
+                        await DeclareQueueAsync(_channel);
+                        Console.WriteLine("RabbitMQ channel created and queues declared.");
+                    }
 
-            return _channel;
+                    return _channel;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"RabbitMQ connection failed: {ex.Message}");
+                    Console.WriteLine($"Retrying in {retryIntervalInMilliseconds / 1000} seconds...");
+
+                    // Wait for the retry interval before retrying
+                    await Task.Delay(retryIntervalInMilliseconds);
+                }
+            }
         }
 
         private static async Task DeclareQueueAsync(IChannel channel)
