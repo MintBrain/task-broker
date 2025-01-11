@@ -5,3 +5,9 @@
 # Demo
 [Внешний API](https://taskbroker.mintbrain.space/index.html)  
 [Prometheus](https://taskbroker.mintbrain.space/prometheus/query)
+
+Login credentials:  
+```
+"username": "test",
+"password": "password"
+```
