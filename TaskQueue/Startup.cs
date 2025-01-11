@@ -15,7 +15,7 @@ namespace TaskQueue
         
         public void ConfigureServices(IServiceCollection services)
         {
-            // PrintConfigurationSection(Configuration);
+            // PrintConfigurationSection(Configuration); // For debugging
             // Использование строки подключения к базе данных
             // Подключение к PostgreSQL
             var connectionString = Configuration.GetConnectionString("DefaultConnection");
@@ -47,6 +47,7 @@ namespace TaskQueue
 
         public void Configure(IApplicationBuilder app)
         {
+            EnsureDatabaseConnected(app.ApplicationServices);
             // Настройка маршрутизации и обработки запросов
             app.UseRouting();
 
@@ -66,6 +67,30 @@ namespace TaskQueue
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "TaskQueue API V1");
                 c.RoutePrefix = string.Empty;
             });
+        }
+        
+        private void EnsureDatabaseConnected(IServiceProvider serviceProvider)
+        {
+            using var scope = serviceProvider.CreateScope();
+            var services = scope.ServiceProvider;
+            var context = services.GetRequiredService<AppDbContext>();
+
+            while (true)
+            {
+                try
+                {
+                    Console.WriteLine("Attempting to connect to the database...");
+                    context.Database.EnsureCreated(); // Создание базы данных, если ее нет
+                    Console.WriteLine("Database connected successfully.");
+                    break; // Exit the loop once the connection is successful
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"An error occurred while connecting to the database: {ex.Message}");
+                    Console.WriteLine("Retrying in 5 seconds...");
+                    Thread.Sleep(5000); // Wait for 5 seconds before retrying
+                }
+            }
         }
         
         private void PrintConfigurationSection(IConfiguration configuration, string parentKey = "")

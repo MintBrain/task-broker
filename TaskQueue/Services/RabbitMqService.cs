@@ -23,25 +23,37 @@ namespace TaskQueue.Services
 
         public async Task<IChannel> GetChannelAsync()
         {
-            try
+            const int retryIntervalInMilliseconds = 5000; // Retry every 5 seconds
+            
+            while (true)
             {
-                if (_connection == null || !_connection.IsOpen)
+                try
                 {
-                    _connection = await _connectionFactory.CreateConnectionAsync();
-                }
+                    if (_connection == null || !_connection.IsOpen)
+                    {
+                        Console.WriteLine("Attempting to connect to RabbitMQ...");
+                        _connection = await _connectionFactory.CreateConnectionAsync();
+                        Console.WriteLine("RabbitMQ connection established.");
+                    }
 
-                if (_channel == null || !_channel.IsOpen)
+                    if (_channel == null || !_channel.IsOpen)
+                    {
+                        Console.WriteLine("Creating RabbitMQ channel...");
+                        _channel = await _connection.CreateChannelAsync();
+                        await DeclareQueueAsync(_channel);
+                        Console.WriteLine("RabbitMQ channel created and queues declared.");
+                    }
+
+                    return _channel;
+                }
+                catch (Exception ex)
                 {
-                    _channel = await _connection.CreateChannelAsync();
-                    await DeclareQueueAsync(_channel);
-                }
+                    Console.WriteLine($"RabbitMQ connection failed: {ex.Message}");
+                    Console.WriteLine($"Retrying in {retryIntervalInMilliseconds / 1000} seconds...");
 
-                return _channel;
-            }
-            catch (Exception ex) // TODO: Retry every 5 sec. to connect
-            {
-                Console.WriteLine(ex.Message);
-                throw new Exception();
+                    // Wait for the retry interval before retrying
+                    await Task.Delay(retryIntervalInMilliseconds);
+                }
             }
         }
         
