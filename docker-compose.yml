@@ -2,10 +2,9 @@ version: '3.8'
 
 services:
   apigateway:
-    image: apigateway:latest
     build:
-      context: ./ApiGateway
-      dockerfile: Dockerfile
+      context: ./
+      dockerfile: ./ApiGateway/Dockerfile
     ports:
       - "5000:80" # Проброс порта для ApiGateway
     environment:
@@ -15,7 +14,6 @@ services:
       - taskqueue
 
   taskqueue:
-    image: taskqueue:latest
     build:
       context: ./
       dockerfile: ./TaskQueue/Dockerfile
@@ -28,9 +26,11 @@ services:
       - RabbitMQ__QueueName=taskqueue
       - RabbitMQ__Username=user
       - RabbitMQ__Password=password
+    depends_on:
+      - rabbitmq
+      - db
 
   taskexecutor:
-    image: taskexecutor:latest
     build:
       context: ./
       dockerfile: ./TaskExecutor/Dockerfile
@@ -40,6 +40,8 @@ services:
       - RabbitMQ__QueueName=taskqueue
       - RabbitMQ__Username=user
       - RabbitMQ__Password=password
+    depends_on:
+      - rabbitmq
 
   rabbitmq:
     image: rabbitmq:management

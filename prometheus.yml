@@ -8,6 +8,7 @@ scrape_configs:
       - targets: ['apigateway:80'] # Сервис apigateway
 
   - job_name: 'taskqueue'
+    metrics_path: '/queue/metrics'
     static_configs:
       - targets: ['taskqueue:5001'] # Сервис taskqueue
 
