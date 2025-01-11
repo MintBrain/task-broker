@@ -64,6 +64,6 @@ public class TasksController : ControllerBase
         var client = _httpClientFactory.CreateClient("TaskQueueClient");
         var response = await client.PostAsync($"/queue/restart/{id}", null);
         var content = await response.Content.ReadAsStringAsync();
-        return Content(content, "application/json");
+        return Content(content, "plain/text");
     }
 }

@@ -17,12 +17,12 @@ namespace ApiGateway.Controllers
             _httpClientFactory = httpClientFactory;
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("{id:int}")]
         public async Task<IActionResult> GetStatusAsync(int id)
         {
             TasksRecievedRequestsCount.Inc();
             var client = _httpClientFactory.CreateClient("TaskQueueClient");
-            var response = await client.GetAsync("/queue/status");
+            var response = await client.GetAsync($"/queue/status/{id}");
             var content = await response.Content.ReadAsStringAsync();
             return Content(content, "application/json");
         }

@@ -110,6 +110,10 @@ public class Startup
             endpoints.MapMetrics(); // Добавление метрик к маршрутам
         });
         app.UseSwagger();
-        app.UseSwaggerUI();
+        app.UseSwaggerUI(c =>
+        {
+            c.SwaggerEndpoint("/swagger/v1/swagger.json", "ApiGateway API V1");
+            c.RoutePrefix = string.Empty;
+        });
     }
 }
